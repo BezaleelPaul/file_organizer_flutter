@@ -50,3 +50,7 @@ app.*.map.json
 /flutter_windows.dll
 /native_assets.json
 /data/
+
+# Local AI-generated source icon
+/ChatGPT Image Aug 15, 2026, 12_05_26 AM.png
+
