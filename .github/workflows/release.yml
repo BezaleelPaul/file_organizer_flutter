@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows
+            os: windows-latest
+            needs_java: false
+            build_cmd: flutter build windows --release
+            archive_cmd: powershell Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath artifact.zip -Force
+            artifact: file_organizer-windows.zip
+          - name: linux
+            os: ubuntu-latest
+            needs_java: false
+            build_cmd: flutter build linux --release
+            archive_cmd: tar -czf artifact.tar.gz -C build/linux/x64/release bundle
+            artifact: file_organizer-linux.tar.gz
+          - name: macos
+            os: macos-latest
+            needs_java: false
+            build_cmd: flutter build macos --release
+            archive_cmd: tar -czf artifact.tar.gz -C build/macos/Build/Products/Release .
+            artifact: file_organizer-macos.tar.gz
+          - name: ios
+            os: macos-latest
+            needs_java: false
+            build_cmd: flutter build ipa --release --no-codesign
+            archive_cmd: tar -czf artifact.tar.gz -C build/ios/ipa .
+            artifact: file_organizer-ios.tar.gz
+          - name: android
+            os: ubuntu-latest
+            needs_java: true
+            build_cmd: flutter build appbundle --release && flutter build apk --release
+            archive_cmd: mkdir -p android-artifacts && cp build/app/outputs/bundle/release/app-release.aab android-artifacts/ && cp build/app/outputs/apk/release/app-release.apk android-artifacts/ && tar -czf artifact.tar.gz -C android-artifacts .
+            artifact: file_organizer-android.tar.gz
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        if: matrix.needs_java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.41.9
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build
+        run: ${{ matrix.build_cmd }}
+
+      - name: Package artifact
+        run: ${{ matrix.archive_cmd }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+
+  release:
+    name: Create release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect artifacts
+        run: find artifacts -type f -exec mv -t . {} +
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.zip
+            *.tar.gz
+          generate_release_notes: true
