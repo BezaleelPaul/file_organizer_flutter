@@ -49,13 +49,26 @@ String sizeBucketFor(int sizeBytes) {
 }
 
 /// Choose a category for a file with the given lower-cased extension.
+///
+/// Order: pattern-rule match on [fileName] (explicit rules win) → extension
+/// match → size bucket. [fallback] is used when nothing matches (usually
+/// `Others`).
 String classifyFile({
   required String extension,
   required int sizeBytes,
   required CategoryMap categories,
   required bool byExtension,
   required bool bySize,
+  List<PatternRule> patternRules = const [],
+  String? fileName,
+  String fallback = 'Others',
 }) {
+  if (fileName != null) {
+    for (final rule in patternRules) {
+      if (!rule.enabled || rule.pattern.isEmpty) continue;
+      if (rule.regex.hasMatch(fileName)) return rule.category;
+    }
+  }
   if (byExtension) {
     for (final entry in categories.entries) {
       if (entry.value.isEmpty) continue;
@@ -63,11 +76,52 @@ String classifyFile({
     }
   }
   if (bySize) return sizeBucketFor(sizeBytes);
-  return 'Others';
+  return fallback;
 }
 
 /// The `YYYY-MM` subfolder for a modification date.
-String dateSubfolder(DateTime modified) => '${modified.year}-${modified.month.toString().padLeft(2, '0')}';
+///
+/// [template] may contain `{year}`, `{month}` and `{day}` tokens, so deeper
+/// structures like `{year}/{month}` are possible.
+String dateSubfolder(DateTime modified,
+        {String template = '{year}-{month}'}) =>
+    applyTemplate(template, modified: modified);
+
+/// Replace `{name}`, `{ext}`, `{category}`, `{year}`, `{month}`, `{day}` and
+/// `{counter}` tokens in [template] with values for this file.
+String applyTemplate(
+  String template, {
+  String? stem,
+  String? extension,
+  String? category,
+  DateTime? modified,
+  int counter = 0,
+}) {
+  if (template.isEmpty) return template;
+  var out = template;
+  out = out.replaceAll('{name}', stem ?? '');
+  out = out.replaceAll('{ext}', extension ?? '');
+  out = out.replaceAll('{category}', category ?? '');
+  final m = modified ?? DateTime.now();
+  out = out.replaceAll('{year}', m.year.toString());
+  out = out.replaceAll('{month}', m.month.toString().padLeft(2, '0'));
+  out = out.replaceAll('{day}', m.day.toString().padLeft(2, '0'));
+  out = out.replaceAll('{counter}', counter.toString());
+  return out;
+}
+
+/// Whether [name] matches any entry in [excludePatterns] (regex sources).
+bool isExcluded(String name, List<String> excludePatterns) {
+  for (final pattern in excludePatterns) {
+    if (pattern.isEmpty) continue;
+    try {
+      if (RegExp(pattern).hasMatch(name)) return true;
+    } on FormatException {
+      continue;
+    }
+  }
+  return false;
+}
 
 /// Produce a unique file name inside a folder.
 ///

@@ -67,7 +67,7 @@ class _SplashScreenState extends State<SplashScreen>
             ),
             const SizedBox(height: 24),
             Text(
-              'File Organizer',
+              'Mise',
               style: Theme.of(context)
                   .textTheme
                   .headlineSmall

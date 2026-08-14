@@ -39,7 +39,7 @@ class _WatchScreenState extends State<WatchScreen> {
               icon: Icons.visibility_outlined,
               title: 'No folders watched',
               message:
-                  'Add a folder and File Organizer will keep it tidy in the '
+                  'Add a folder and Mise will keep it tidy in the '
                   'background, sorting new files as they appear.',
               action: PrimaryActionButton(
                 label: 'Add a folder',
@@ -61,6 +61,7 @@ class _WatchScreenState extends State<WatchScreen> {
                 const SizedBox(height: 16),
                 for (final watch in state.watches)
                   _WatchCard(
+                    state: state,
                     watch: watch,
                     onToggle: (running) => state.toggleWatch(watch, running),
                     onRemove: () => state.removeWatch(watch),
@@ -141,11 +142,13 @@ class _IntervalDialogState extends State<_IntervalDialog> {
 
 class _WatchCard extends StatelessWidget {
   const _WatchCard({
+    required this.state,
     required this.watch,
     required this.onToggle,
     required this.onRemove,
   });
 
+  final AppState state;
   final WatchJob watch;
   final ValueChanged<bool> onToggle;
   final VoidCallback onRemove;
@@ -178,6 +181,13 @@ class _WatchCard extends StatelessWidget {
                   Text(
                     'Every ${watch.interval}s • ${watch.byExtension ? 'extension, ' : ''}${watch.bySize ? 'size, ' : ''}${watch.byDate ? 'date' : ''}',
                     style: TextStyle(color: scheme.onSurfaceVariant),
+                  ),
+                  Text(
+                    state.osWatchSupported
+                        ? 'Real-time OS event watching'
+                        : 'Background polling (every 20 s)',
+                    style: TextStyle(
+                        color: scheme.primary, fontSize: 12),
                   ),
                   if (watch.error != null)
                     Text('Error: ${watch.error}',

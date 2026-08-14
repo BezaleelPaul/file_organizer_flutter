@@ -47,17 +47,19 @@ class _HistoryCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
-        leading: CircleAvatar(
-          backgroundColor: scheme.primaryContainer,
-          child: Icon(
-            entry.action == 'copy'
-                ? Icons.copy_outlined
-                : Icons.drive_file_move_outlined,
-            color: scheme.primary,
+          leading: CircleAvatar(
+            backgroundColor: scheme.primaryContainer,
+            child: Icon(
+              entry.action == 'copy'
+                  ? Icons.copy_outlined
+                  : entry.action == 'trash'
+                      ? Icons.delete_sweep_outlined
+                      : Icons.drive_file_move_outlined,
+              color: scheme.primary,
+            ),
           ),
-        ),
-        title: Text(
-            '${entry.count} files ${entry.action == 'copy' ? 'copied' : 'moved'}'),
+          title: Text(
+              '${entry.count} files ${entry.action == 'copy' ? 'copied' : entry.action == 'trash' ? 'trashed' : 'moved'}'),
         subtitle: Text(_shortRoot(entry.root), overflow: TextOverflow.ellipsis),
         trailing: TextButton(
           onPressed: () => _confirmUndo(context),

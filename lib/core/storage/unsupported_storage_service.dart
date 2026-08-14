@@ -36,5 +36,8 @@ class UnsupportedStorageService implements StorageService {
       throw UnsupportedError('File access is not available on this platform.');
 
   @override
+  Future<String?> fileHash(String directory, String name) async => null;
+
+  @override
   Future<bool> removeEmptyDirectory(String directory) async => false;
 }

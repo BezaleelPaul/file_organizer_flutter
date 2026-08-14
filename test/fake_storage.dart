@@ -1,5 +1,7 @@
+import 'package:crypto/crypto.dart';
 import 'package:file_organizer/core/models.dart';
 import 'package:file_organizer/core/storage/storage_service.dart';
+import 'dart:convert';
 
 /// In-memory fake storage for unit tests.
 class FakeStorage implements StorageService {
@@ -17,6 +19,19 @@ class FakeStorage implements StorageService {
         ),
     ];
     if (realDirectory) realDirs.add(dir);
+  }
+
+  /// Seed a file with an explicit size, so duplicate detection can group by
+  /// (size, content hash). Files with the same name hash identically.
+  void seedWithSize(String dir, String name, int size) {
+    dirs[dir] ??= [];
+    dirs[dir]!.add(FileEntry(
+      name: name,
+      size: size,
+      isDirectory: false,
+      modified: DateTime(2026, 8, 1),
+    ));
+    realDirs.add(dir);
   }
 
   @override
@@ -77,6 +92,15 @@ class FakeStorage implements StorageService {
   @override
   Future<void> deleteFile(String directory, String name) async {
     dirs[directory]?.removeWhere((e) => e.name == name);
+  }
+
+  @override
+  Future<String?> fileHash(String directory, String name) async {
+    final entry = dirs[directory]?.where((e) => e.name == name).firstOrNull;
+    if (entry == null) return null;
+    // Deterministic per size: two files with the same size in the fake are
+    // treated as byte-identical, which is enough to exercise detection.
+    return sha256.convert(utf8.encode('${entry.size}')).toString();
   }
 
   @override

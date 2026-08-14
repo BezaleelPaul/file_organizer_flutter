@@ -1,4 +1,4 @@
-# File Organizer
+# Mise
 
 Sort files into folders by type, size, or date on any device.
 
@@ -152,9 +152,15 @@ Production distribution needs real signing:
   `android/app/build.gradle.kts` with a keystore. Store the keystore and its
   passwords as GitHub secrets and wire them into the workflow.
 - **iOS** — set up an Apple Developer signing certificate + provisioning profile
-  as GitHub secrets and remove `--no-codesign`.
-- **macOS** — add Developer ID signing and notarization for distribution
-  outside the App Store.
+  as GitHub secrets and remove `--no-codesign`. **A device cannot install an
+  unsigned build at all**, so iOS is blocked until then.
+- **macOS** — the app runs **without the App Sandbox** (`app-sandbox: false`
+  in `macos/Runner/*.entitlements`) so it can read and move files anywhere on
+  disk, like Hazel/File Arbor. The CI build is ad-hoc signed, so on first
+  launch macOS Gatekeeper will still show *"cannot be opened because the
+  developer cannot be verified"* — right-click the app → **Open** once (or run
+  `xattr -dr com.apple.quarantine file_organizer.app`). For frictionless
+  distribution, add Developer ID signing + notarization as GitHub secrets.
 
 ---
 

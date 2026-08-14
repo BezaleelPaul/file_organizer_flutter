@@ -3,6 +3,7 @@ library;
 
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:file_organizer/core/models.dart';
 import 'package:file_organizer/core/storage/storage_service.dart';
 import 'package:file_picker/file_picker.dart';
@@ -87,6 +88,14 @@ class IoStorageService implements StorageService {
   Future<void> deleteFile(String directory, String name) async {
     final file = File(p.join(directory, name));
     if (file.existsSync()) file.deleteSync();
+  }
+
+  @override
+  Future<String?> fileHash(String directory, String name) async {
+    final file = File(p.join(directory, name));
+    if (!file.existsSync()) return null;
+    final bytes = await file.readAsBytes();
+    return sha256.convert(bytes).toString();
   }
 
   @override

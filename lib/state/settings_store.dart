@@ -12,6 +12,12 @@ class SettingsStore {
   static const _keyHistory = 'history';
   static const _keyWatches = 'watches';
   static const _keyLastRoot = 'last_root';
+  static const _keyPatternRules = 'pattern_rules';
+  static const _keyExcludes = 'excludes';
+  static const _keyAllowedCategories = 'allowed_categories';
+  static const _keyRenameTemplate = 'rename_template';
+  static const _keyDateTemplate = 'date_template';
+  static const _keyDetectDuplicates = 'detect_duplicates';
 
   Future<CategoryMap> loadCategories() async {
     final prefs = await SharedPreferences.getInstance();
@@ -110,5 +116,75 @@ class SettingsStore {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
         _keyWatches, jsonEncode(watches.map((e) => e.toJson()).toList()));
+  }
+
+  Future<List<PatternRule>> loadPatternRules() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_keyPatternRules);
+    if (raw == null) return [];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map((e) => PatternRule.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> savePatternRules(List<PatternRule> rules) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        _keyPatternRules, jsonEncode(rules.map((e) => e.toJson()).toList()));
+  }
+
+  Future<List<String>> loadExcludes() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(_keyExcludes) ?? [];
+  }
+
+  Future<void> saveExcludes(List<String> excludes) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_keyExcludes, excludes);
+  }
+
+  Future<Set<String>> loadAllowedCategories() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(_keyAllowedCategories)?.toSet() ?? {};
+  }
+
+  Future<void> saveAllowedCategories(Set<String> allowed) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_keyAllowedCategories, allowed.toList());
+  }
+
+  Future<String> loadRenameTemplate() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyRenameTemplate) ?? '';
+  }
+
+  Future<void> saveRenameTemplate(String template) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyRenameTemplate, template);
+  }
+
+  Future<String> loadDateTemplate() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyDateTemplate) ?? '{year}-{month}';
+  }
+
+  Future<void> saveDateTemplate(String template) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyDateTemplate, template);
+  }
+
+  Future<bool> loadDetectDuplicates() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyDetectDuplicates) ?? false;
+  }
+
+  Future<void> saveDetectDuplicates(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyDetectDuplicates, value);
   }
 }

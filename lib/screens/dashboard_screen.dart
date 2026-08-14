@@ -260,11 +260,13 @@ class _RecentActivity extends StatelessWidget {
                   leading: Icon(
                     entry.action == 'copy'
                         ? Icons.copy_outlined
-                        : Icons.drive_file_move_outlined,
+                        : entry.action == 'trash'
+                            ? Icons.delete_sweep_outlined
+                            : Icons.drive_file_move_outlined,
                     color: scheme.primary,
                   ),
                   title: Text(
-                      '${entry.count} files ${entry.action == 'copy' ? 'copied' : 'moved'}'),
+                      '${entry.count} files ${entry.action == 'copy' ? 'copied' : entry.action == 'trash' ? 'trashed' : 'moved'}'),
                   subtitle: Text(
                     '${entry.timestamp.split('T').first} • ${_shortRoot(entry.root)}',
                     overflow: TextOverflow.ellipsis,

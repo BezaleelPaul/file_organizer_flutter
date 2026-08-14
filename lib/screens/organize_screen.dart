@@ -29,7 +29,7 @@ class OrganizeScreen extends StatelessWidget {
         title: 'File access not available',
         message:
             'This platform cannot reach your local files. Install the desktop '
-            'or Android version of File Organizer instead.',
+            'or Android version of Mise instead.',
       );
     }
     return AnimatedSwitcher(
@@ -57,7 +57,7 @@ class _NoRoot extends StatelessWidget {
       icon: Icons.folder_open_outlined,
       title: 'Pick a folder to organize',
       message:
-          'Choose a folder full of unsorted files. File Organizer will plan '
+          'Choose a folder full of unsorted files. Mise will plan '
           'moves for every file — you review them before anything changes.',
       action: PrimaryActionButton(
         label: 'Choose folder',
@@ -232,6 +232,7 @@ class _ReviewPanel extends StatelessWidget {
     final files = scan.files;
     final selectedCount =
         files.where((f) => !f.skipped).length;
+    final duplicateCount = files.where((f) => f.isDuplicate).length;
 
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -256,7 +257,17 @@ class _ReviewPanel extends StatelessWidget {
                 ],
               ),
             ),
-            if (state.busy != BusyKind.organizing)
+            if (state.busy != BusyKind.organizing) ...[
+              if (selectedCount > 0)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        _confirmTrash(context, files.where((f) => !f.skipped).toList()),
+                    icon: const Icon(Icons.delete_sweep_outlined),
+                    label: const Text('Move to Trash'),
+                  ),
+                ),
               PrimaryActionButton(
                 label: selectedCount == 0
                     ? 'Nothing selected'
@@ -268,8 +279,47 @@ class _ReviewPanel extends StatelessWidget {
                 onPressed:
                     selectedCount == 0 ? null : () => state.organize(),
               ),
+            ],
           ],
         ),
+        if (duplicateCount > 0) ...[
+          const SizedBox(height: 12),
+          Card(
+            color: scheme.tertiaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(Icons.copy_all_outlined, color: scheme.onTertiaryContainer),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '$duplicateCount duplicate ${duplicateCount == 1 ? 'file' : 'files'} '
+                      'detected. Skip them so the first copy is kept.',
+                      style: TextStyle(color: scheme.onTertiaryContainer),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => state.skipAllDuplicates(),
+                    child: const Text('Skip all'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+        if (state.renameTemplate.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                'Rename template: ${state.renameTemplate}',
+                style: TextStyle(color: scheme.onSurfaceVariant),
+              ),
+            ),
+          ),
+        ],
         if (state.busy == BusyKind.organizing) ...[
           const SizedBox(height: 16),
           Card(
@@ -318,6 +368,30 @@ class _ReviewPanel extends StatelessWidget {
       ],
     );
   }
+void _confirmTrash(BuildContext context, List<PlannedMove> files) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Move to Trash?'),
+        content: Text(
+            'Move ${files.length} files into the reversible Trash folder. '
+            'You can undo this from History.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              state.trashFiles(files);
+            },
+            child: const Text('Move to Trash'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _FileRow extends StatelessWidget {
@@ -350,8 +424,11 @@ class _FileRow extends StatelessWidget {
               decoration: file.skipped ? TextDecoration.lineThrough : null,
             )),
         subtitle: Text(
-          '${formatBytes(file.size)}  →  ${file.overrideCategory ?? file.destination}',
+          '${file.isDuplicate ? 'Duplicate  •  ' : ''}${formatBytes(file.size)}  →  ${file.overrideCategory ?? file.destination}',
           overflow: TextOverflow.ellipsis,
+          style: file.isDuplicate
+              ? TextStyle(color: Theme.of(context).colorScheme.tertiary)
+              : null,
         ),
         trailing: SizedBox(
           width: 160,

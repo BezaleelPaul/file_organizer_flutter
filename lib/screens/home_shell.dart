@@ -120,7 +120,7 @@ class _SideNav extends StatelessWidget {
             ),
             if (MediaQuery.of(context).size.width >= 1200) ...[
               const SizedBox(width: 8),
-              const Text('File Organizer',
+              const Text('Mise',
                   style: TextStyle(fontWeight: FontWeight.w700)),
             ],
           ],

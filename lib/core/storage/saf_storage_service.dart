@@ -90,6 +90,9 @@ class SafStorageService implements StorageService {
   }
 
   @override
+  Future<String?> fileHash(String directory, String name) async => null;
+
+  @override
   Future<bool> removeEmptyDirectory(String directory) async {
     // DocumentFile has no reliable empty-dir delete across providers; skip.
     return false;

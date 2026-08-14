@@ -18,6 +18,35 @@ class FileEntry {
   final DateTime modified;
 }
 
+/// A custom regex pattern rule: files whose name matches [pattern] go to
+/// [category]. Works alongside extension-based sorting.
+class PatternRule {
+  PatternRule({
+    required this.pattern,
+    required this.category,
+    this.enabled = true,
+  });
+
+  /// Regular-expression source matched against the file name.
+  final String pattern;
+  final String category;
+  bool enabled;
+
+  RegExp get regex => RegExp(pattern);
+
+  Map<String, dynamic> toJson() => {
+        'pattern': pattern,
+        'category': category,
+        'enabled': enabled,
+      };
+
+  factory PatternRule.fromJson(Map<String, dynamic> json) => PatternRule(
+        pattern: json['pattern'] as String? ?? '',
+        category: json['category'] as String? ?? 'Others',
+        enabled: json['enabled'] as bool? ?? true,
+      );
+}
+
 /// A file and the folder it will be moved into.
 class PlannedMove {
   PlannedMove({
@@ -25,6 +54,7 @@ class PlannedMove {
     required this.size,
     required this.category,
     required this.destination,
+    required this.modified,
   });
 
   final String name;
@@ -34,8 +64,15 @@ class PlannedMove {
   /// Relative destination path inside the root, e.g. `Images/2026-08`.
   final String destination;
 
+  /// Last-modified time, used for date tokens and rename templates.
+  final DateTime modified;
+
   String? overrideCategory;
   bool skipped = false;
+
+  /// True when this file is a byte-identical duplicate of another file found
+  /// in the same scan (set by duplicate detection).
+  bool isDuplicate = false;
 
   String get effectiveCategory => overrideCategory ?? category;
 

@@ -36,6 +36,10 @@ abstract class StorageService {
   /// Delete [name] inside [directory].
   Future<void> deleteFile(String directory, String name);
 
+  /// Content hash for duplicate detection, or null when unsupported
+  /// (e.g. Android SAF). The hash is stable for identical bytes.
+  Future<String?> fileHash(String directory, String name);
+
   /// Remove [directory] if it is now empty. Returns true if removed.
   Future<bool> removeEmptyDirectory(String directory);
 }

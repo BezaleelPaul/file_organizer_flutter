@@ -18,32 +18,32 @@ jobs:
             os: windows-latest
             needs_java: false
             build_cmd: flutter build windows --release
-            archive_cmd: powershell Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath file_organizer-windows.zip -Force
-            artifact: file_organizer-windows.zip
+            archive_cmd: powershell Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath mise-windows.zip -Force
+            artifact: mise-windows.zip
           - name: linux
             os: ubuntu-latest
             needs_java: false
             build_cmd: flutter build linux --release
-            archive_cmd: tar -czf file_organizer-linux.tar.gz -C build/linux/x64/release bundle
-            artifact: file_organizer-linux.tar.gz
+            archive_cmd: tar -czf mise-linux.tar.gz -C build/linux/x64/release bundle
+            artifact: mise-linux.tar.gz
           - name: macos
             os: macos-latest
             needs_java: false
             build_cmd: flutter build macos --release
-            archive_cmd: tar -czf file_organizer-macos.tar.gz -C build/macos/Build/Products/Release .
-            artifact: file_organizer-macos.tar.gz
+            archive_cmd: tar -czf mise-macos.tar.gz -C build/macos/Build/Products/Release .
+            artifact: mise-macos.tar.gz
           - name: ios
             os: macos-latest
             needs_java: false
             build_cmd: flutter build ipa --release --no-codesign
-            archive_cmd: tar -czf file_organizer-ios.tar.gz -C build/ios/archive Runner.xcarchive
-            artifact: file_organizer-ios.tar.gz
+            archive_cmd: tar -czf mise-ios.tar.gz -C build/ios/archive Runner.xcarchive
+            artifact: mise-ios.tar.gz
           - name: android
             os: ubuntu-latest
             needs_java: true
             build_cmd: flutter build appbundle --release && flutter build apk --release
-            archive_cmd: mkdir -p android-artifacts && cp build/app/outputs/bundle/release/app-release.aab android-artifacts/ && cp build/app/outputs/apk/release/app-release.apk android-artifacts/ && tar -czf file_organizer-android.tar.gz -C android-artifacts .
-            artifact: file_organizer-android.tar.gz
+            archive_cmd: mkdir -p android-artifacts && cp build/app/outputs/bundle/release/app-release.aab android-artifacts/ && cp build/app/outputs/apk/release/app-release.apk android-artifacts/ && tar -czf mise-android.tar.gz -C android-artifacts .
+            artifact: mise-android.tar.gz
 
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +70,10 @@ jobs:
 
       - name: Build
         run: ${{ matrix.build_cmd }}
+
+      - name: Ad-hoc sign macOS app
+        if: matrix.name == 'macos'
+        run: codesign --force --deep --sign - build/macos/Build/Products/Release/file_organizer.app
 
       - name: Package artifact
         run: ${{ matrix.archive_cmd }}

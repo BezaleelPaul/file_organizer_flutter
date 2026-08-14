@@ -2,14 +2,17 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:file_organizer/core/models.dart';
 import 'package:file_organizer/core/organizer.dart';
 import 'package:file_organizer/core/rules.dart';
+import 'package:file_organizer/core/storage/io_storage_service.dart';
 import 'package:file_organizer/core/storage/storage_factory.dart';
 import 'package:file_organizer/core/storage/storage_service.dart';
 import 'package:file_organizer/state/settings_store.dart';
 import 'package:flutter/foundation.dart';
+import 'package:watcher/watcher.dart';
 
 enum BusyKind { none, scanning, organizing, undo }
 
@@ -36,6 +39,8 @@ class AppState extends ChangeNotifier {
   final SettingsStore store;
   final StorageService storage = createStorageService();
 
+  bool get osWatchSupported => _osWatchSupported;
+
   bool initialized = false;
   CompletionMessage? completion;
 
@@ -44,6 +49,12 @@ class AppState extends ChangeNotifier {
   bool bySize = false;
   bool byDate = false;
   bool copyInsteadOfMove = false;
+  bool detectDuplicates = false;
+  String renameTemplate = '';
+  String dateTemplate = '{year}-{month}';
+  List<PatternRule> patternRules = [];
+  List<String> excludePatterns = [];
+  Set<String> allowedCategories = {};
 
   String? root;
   String? rootLabel;
@@ -58,6 +69,9 @@ class AppState extends ChangeNotifier {
   String? error;
 
   Timer? _watchTimer;
+  final Map<String, StreamSubscription<WatchEvent>> _osWatchers = {};
+  final Map<String, Timer> _watchDebounces = {};
+  bool _osWatchSupported = false;
 
   Future<void> _init() async {
     categories = await store.loadCategories();
@@ -66,10 +80,18 @@ class AppState extends ChangeNotifier {
     bySize = flags['bySize'] ?? false;
     byDate = flags['byDate'] ?? false;
     copyInsteadOfMove = flags['copyInsteadOfMove'] ?? false;
+    detectDuplicates = await store.loadDetectDuplicates();
+    renameTemplate = await store.loadRenameTemplate();
+    dateTemplate = await store.loadDateTemplate();
+    patternRules = await store.loadPatternRules();
+    excludePatterns = await store.loadExcludes();
+    allowedCategories = await store.loadAllowedCategories();
     history = await store.loadHistory();
     watches = await store.loadWatches();
     final lastRoot = await store.loadLastRoot();
     if (lastRoot != null) root = lastRoot;
+    _osWatchSupported =
+        storage is IoStorageService && !kIsWeb && FileSystemEntity.isWatchSupported;
     _startWatching();
     initialized = true;
     notifyListeners();
@@ -225,6 +247,12 @@ class AppState extends ChangeNotifier {
         bySize: bySize,
         byDate: byDate,
         copyInsteadOfMove: copyInsteadOfMove,
+        patternRules: patternRules,
+        detectDuplicates: detectDuplicates,
+        renameTemplate: renameTemplate,
+        dateTemplate: dateTemplate,
+        excludePatterns: excludePatterns,
+        allowedCategories: allowedCategories,
       );
 
   // ---- Rules ----
@@ -254,17 +282,51 @@ class AppState extends ChangeNotifier {
     bool? bySize,
     bool? byDate,
     bool? copyInsteadOfMove,
+    bool? detectDuplicates,
   }) async {
     this.byExtension = byExtension ?? this.byExtension;
     this.bySize = bySize ?? this.bySize;
     this.byDate = byDate ?? this.byDate;
     this.copyInsteadOfMove = copyInsteadOfMove ?? this.copyInsteadOfMove;
+    this.detectDuplicates = detectDuplicates ?? this.detectDuplicates;
     await store.saveFlags({
       'byExtension': this.byExtension,
       'bySize': this.bySize,
       'byDate': this.byDate,
       'copyInsteadOfMove': this.copyInsteadOfMove,
     });
+    await store.saveDetectDuplicates(this.detectDuplicates);
+    notifyListeners();
+  }
+
+  Future<void> setPatternRules(List<PatternRule> rules) async {
+    patternRules = rules.where((r) => r.pattern.isNotEmpty).toList();
+    await store.savePatternRules(patternRules);
+    notifyListeners();
+  }
+
+  Future<void> setExcludePatterns(List<String> patterns) async {
+    excludePatterns =
+        patterns.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    await store.saveExcludes(excludePatterns);
+    notifyListeners();
+  }
+
+  Future<void> setAllowedCategories(Set<String> allowed) async {
+    allowedCategories = allowed;
+    await store.saveAllowedCategories(allowed);
+    notifyListeners();
+  }
+
+  Future<void> setRenameTemplate(String template) async {
+    renameTemplate = template.trim();
+    await store.saveRenameTemplate(renameTemplate);
+    notifyListeners();
+  }
+
+  Future<void> setDateTemplate(String template) async {
+    dateTemplate = template.trim().isEmpty ? '{year}-{month}' : template.trim();
+    await store.saveDateTemplate(dateTemplate);
     notifyListeners();
   }
 
@@ -272,11 +334,50 @@ class AppState extends ChangeNotifier {
 
   void _startWatching() {
     _watchTimer?.cancel();
+    for (final sub in _osWatchers.values) {
+      sub.cancel();
+    }
+    _osWatchers.clear();
+    for (final timer in _watchDebounces.values) {
+      timer.cancel();
+    }
+    _watchDebounces.clear();
+
     if (watches.isEmpty) return;
+
+    if (_osWatchSupported) {
+      for (final watch in watches) {
+        if (!watch.running) continue;
+        try {
+          final watcher = DirectoryWatcher(watch.root);
+          final sub = watcher.events.listen((event) {
+            if (event.type == ChangeType.REMOVE) return;
+            _scheduleOsWatch(watch);
+          }, onError: (Object e) {
+            watch.error = e.toString();
+            notifyListeners();
+          });
+          _osWatchers[watch.root] = sub;
+        } catch (_) {
+          // Fall back to polling for this folder.
+        }
+      }
+    }
+
+    // Polling safety net for Android (SAF) and any folder without OS events.
     _watchTimer = Timer.periodic(const Duration(seconds: 20), (_) {
       for (final watch in watches) {
-        if (watch.running) _runWatch(watch);
+        if (watch.running && !_osWatchers.containsKey(watch.root)) {
+          _runWatch(watch);
+        }
       }
+    });
+  }
+
+  void _scheduleOsWatch(WatchJob watch) {
+    _watchDebounces[watch.root]?.cancel();
+    _watchDebounces[watch.root] = Timer(const Duration(seconds: 1), () {
+      _runWatch(watch);
     });
   }
 
@@ -330,9 +431,16 @@ class AppState extends ChangeNotifier {
         byExtension: watch.byExtension,
         bySize: watch.bySize,
         byDate: watch.byDate,
+        patternRules: patternRules,
+        detectDuplicates: detectDuplicates,
+        renameTemplate: renameTemplate,
+        dateTemplate: dateTemplate,
+        excludePatterns: excludePatterns,
+        allowedCategories: allowedCategories,
       );
       final plan = await organizer.scan();
-      final actionable = plan.files.where((f) => !f.skipped).toList();
+      final actionable =
+          plan.files.where((f) => !f.skipped && !f.isDuplicate).toList();
       if (actionable.isEmpty) {
         watch.lastRun = DateTime.now().toIso8601String();
         watch.lastCount = 0;
@@ -358,9 +466,58 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  // ---- Trash ----
+
+  /// Move [files] to the reversible in-folder Trash and record it for undo.
+  Future<void> trashFiles(List<PlannedMove> files) async {
+    final current = root;
+    if (current == null || files.isEmpty || busy != BusyKind.none) return;
+    _setBusy(BusyKind.organizing);
+    addLog('Moving ${files.length} files to Trash…');
+    try {
+      final organizer = _organizer(current);
+      final entry = await organizer.trash(files, log: (m) => addLog(m));
+      for (final move in files) {
+        move.skipped = true;
+      }
+      history.insert(0, entry);
+      if (history.length > 50) history.removeRange(50, history.length);
+      await store.saveHistory(history);
+      status = '${entry.count} files trashed';
+      addLog(status);
+      completion = CompletionMessage(
+        title: 'Moved to Trash',
+        message: '${entry.count} files moved to the Trash folder. You can '
+            'undo this from History.',
+        undoEntry: entry,
+      );
+      _setBusy(BusyKind.none);
+    } catch (e) {
+      error = e.toString();
+      addLog('ERROR: $e');
+      _setBusy(BusyKind.none);
+    }
+  }
+
+  /// Skip every file flagged as a duplicate.
+  void skipAllDuplicates() {
+    final scan = this.scan;
+    if (scan == null) return;
+    for (final file in scan.files) {
+      if (file.isDuplicate) file.skipped = true;
+    }
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _watchTimer?.cancel();
+    for (final sub in _osWatchers.values) {
+      sub.cancel();
+    }
+    for (final timer in _watchDebounces.values) {
+      timer.cancel();
+    }
     super.dispose();
   }
 }
