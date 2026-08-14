@@ -18,31 +18,31 @@ jobs:
             os: windows-latest
             needs_java: false
             build_cmd: flutter build windows --release
-            archive_cmd: powershell Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath artifact.zip -Force
+            archive_cmd: powershell Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath file_organizer-windows.zip -Force
             artifact: file_organizer-windows.zip
           - name: linux
             os: ubuntu-latest
             needs_java: false
             build_cmd: flutter build linux --release
-            archive_cmd: tar -czf artifact.tar.gz -C build/linux/x64/release bundle
+            archive_cmd: tar -czf file_organizer-linux.tar.gz -C build/linux/x64/release bundle
             artifact: file_organizer-linux.tar.gz
           - name: macos
             os: macos-latest
             needs_java: false
             build_cmd: flutter build macos --release
-            archive_cmd: tar -czf artifact.tar.gz -C build/macos/Build/Products/Release .
+            archive_cmd: tar -czf file_organizer-macos.tar.gz -C build/macos/Build/Products/Release .
             artifact: file_organizer-macos.tar.gz
           - name: ios
             os: macos-latest
             needs_java: false
             build_cmd: flutter build ipa --release --no-codesign
-            archive_cmd: tar -czf artifact.tar.gz -C build/ios/ipa .
+            archive_cmd: tar -czf file_organizer-ios.tar.gz -C build/ios/ipa .
             artifact: file_organizer-ios.tar.gz
           - name: android
             os: ubuntu-latest
             needs_java: true
             build_cmd: flutter build appbundle --release && flutter build apk --release
-            archive_cmd: mkdir -p android-artifacts && cp build/app/outputs/bundle/release/app-release.aab android-artifacts/ && cp build/app/outputs/apk/release/app-release.apk android-artifacts/ && tar -czf artifact.tar.gz -C android-artifacts .
+            archive_cmd: mkdir -p android-artifacts && cp build/app/outputs/bundle/release/app-release.aab android-artifacts/ && cp build/app/outputs/apk/release/app-release.apk android-artifacts/ && tar -czf file_organizer-android.tar.gz -C android-artifacts .
             artifact: file_organizer-android.tar.gz
 
     steps:
