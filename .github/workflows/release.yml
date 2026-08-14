@@ -36,7 +36,7 @@ jobs:
             os: macos-latest
             needs_java: false
             build_cmd: flutter build ipa --release --no-codesign
-            archive_cmd: tar -czf file_organizer-ios.tar.gz -C build/ios/ipa .
+            archive_cmd: tar -czf file_organizer-ios.tar.gz -C build/ios/archive Runner.xcarchive
             artifact: file_organizer-ios.tar.gz
           - name: android
             os: ubuntu-latest

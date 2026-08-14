@@ -99,7 +99,7 @@ flutter build macos --release
 flutter build appbundle --release
 flutter build apk --release
 
-# iOS — produces an unsigned .ipa
+# iOS — produces an unsigned Xcode archive
 flutter build ipa --release --no-codesign
 ```
 
@@ -136,7 +136,7 @@ manually from the **Actions** tab (workflow_dispatch) without a tag.
 | `file_organizer-windows.zip` | Windows exe + runtime DLLs |
 | `file_organizer-linux.tar.gz` | Linux release bundle |
 | `file_organizer-macos.tar.gz` | macOS `.app` bundle |
-| `file_organizer-ios.tar.gz` | iOS `.ipa` (unsigned) |
+| `file_organizer-ios.tar.gz` | iOS `.xcarchive` (unsigned; codesign before install) |
 | `file_organizer-android.tar.gz` | Android `.aab` + `.apk` |
 
 The workflow uses a build matrix (`windows-latest`, `ubuntu-latest`,

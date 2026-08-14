@@ -6,7 +6,6 @@ import android.content.UriPermission
 import android.database.Cursor
 import android.net.Uri
 import android.provider.DocumentsContract
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -15,25 +14,31 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
 
+    companion object {
+        private const val REQUEST_OPEN_TREE = 1
+    }
+
     private val channel = "com.bezaleel.file_organizer/saf"
     private var pendingResult: MethodChannel.Result? = null
 
-    private val openTree =
-        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
-            val result = pendingResult
-            pendingResult = null
-            if (uri == null) {
-                result?.error("cancelled", "Folder picker closed", null)
-                return@registerForActivityResult
-            }
-            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
-                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-            runCatching {
-                contentResolver.takePersistableUriPermission(uri, flags)
-            }
-            result?.success(uri.toString())
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQUEST_OPEN_TREE) return
+        val uri = data?.data
+        val result = pendingResult
+        pendingResult = null
+        if (resultCode != Activity.RESULT_OK || uri == null) {
+            result?.error("cancelled", "Folder picker closed", null)
+            return
         }
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+            Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+        runCatching {
+            contentResolver.takePersistableUriPermission(uri, flags)
+        }
+        result?.success(uri.toString())
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -79,7 +84,7 @@ class MainActivity : FlutterActivity() {
 
     private fun pickTree(result: MethodChannel.Result) {
         pendingResult = result
-        openTree.launch(null)
+        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), REQUEST_OPEN_TREE)
     }
 
     private fun doc(uri: String): DocumentFile? =
