@@ -14,6 +14,7 @@ void main() async {
   final store = SettingsStore();
   final minimizeToTray = await store.loadMinimizeToTray();
   await initDesktop(minimizeToTray: minimizeToTray);
+  registerWindowCloseListener();
   TrayManager.instance.addListener(_TrayListener());
   final state = AppState(store: store);
   runApp(FileOrganizerApp(state: state));

@@ -533,11 +533,20 @@ class AppState extends ChangeNotifier {
     }
 
     // Polling safety net for Android (SAF) and any folder without OS events.
+    // Each watch runs at its own chosen interval.
     _watchTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      final now = DateTime.now();
       for (final watch in watches) {
-        if (watch.running && !_osWatchers.containsKey(watch.root)) {
-          _runWatch(watch);
+        if (!watch.running) continue;
+        if (_osWatchers.containsKey(watch.root)) continue;
+        final last = watch.lastRun == null
+            ? null
+            : DateTime.tryParse(watch.lastRun!);
+        if (last != null &&
+            now.difference(last).inSeconds < watch.interval) {
+          continue;
         }
+        _runWatch(watch);
       }
     });
   }
@@ -762,7 +771,7 @@ class AppState extends ChangeNotifier {
     minimizeToTray = enabled;
     await store.saveMinimizeToTray(enabled);
     if (isDesktop) {
-      await setPreventCloseEnabled(enabled);
+      await syncMinimizeToTray(enabled);
     }
     notifyListeners();
   }

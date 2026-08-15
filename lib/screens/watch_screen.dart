@@ -21,10 +21,10 @@ class _WatchScreenState extends State<WatchScreen> {
     final state = widget.state;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Watch & schedule'),
+        title: const Text('Auto-organize'),
         bottom: const TabBar(
           tabs: [
-            Tab(text: 'Watch folders'),
+            Tab(text: 'Active folders'),
             Tab(text: 'Schedule'),
           ],
         ),
@@ -54,11 +54,12 @@ class _WatchScreenState extends State<WatchScreen> {
     final state = widget.state;
     return state.watches.isEmpty
         ? EmptyState(
-            icon: Icons.visibility_outlined,
-            title: 'No folders watched',
+            icon: Icons.autorenew,
+            title: 'Keep folders tidy automatically',
             message:
-                'Add a folder and Mise will keep it tidy in the '
-                'background, sorting new files as they appear.',
+                'Add a folder and Mise will sort new files into it as they '
+                'appear — in the background, even while the window is '
+                'minimized to the tray.',
             action: PrimaryActionButton(
               label: 'Add a folder',
               icon: Icons.add,
@@ -91,12 +92,16 @@ class _WatchScreenState extends State<WatchScreen> {
   Future<void> _addWatch() async {
     final root = await widget.state.storage.pickDirectory();
     if (root == null || !mounted) return;
-    final interval = await showDialog<int>(
-      context: context,
-      builder: (context) => _IntervalDialog(initial: _interval),
-    );
-    if (interval == null || !mounted) return;
-    _interval = interval;
+    var interval = _interval;
+    if (!widget.state.osWatchSupported) {
+      final picked = await showDialog<int>(
+        context: context,
+        builder: (context) => _IntervalDialog(initial: _interval),
+      );
+      if (picked == null || !mounted) return;
+      _interval = picked;
+      interval = picked;
+    }
     await widget.state.addWatch(root, interval);
     if (!mounted) return;
     if (widget.state.error != null) {
@@ -196,15 +201,10 @@ class _WatchCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   Text(
-                    'Every ${watch.interval}s • ${watch.byExtension ? 'extension, ' : ''}${watch.bySize ? 'size, ' : ''}${watch.byDate ? 'date' : ''}',
-                    style: TextStyle(color: scheme.onSurfaceVariant),
-                  ),
-                  Text(
                     state.osWatchSupported
-                        ? 'Real-time OS event watching'
-                        : 'Background polling (every 20 s)',
-                    style: TextStyle(
-                        color: scheme.primary, fontSize: 12),
+                        ? 'Real-time watching • ${_modes(watch)}'
+                        : 'Every ${watch.interval}s • ${_modes(watch)}',
+                    style: TextStyle(color: scheme.onSurfaceVariant),
                   ),
                   if (watch.error != null)
                     Text('Error: ${watch.error}',
@@ -230,5 +230,14 @@ class _WatchCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _modes(WatchJob watch) {
+    final modes = <String>[
+      if (watch.byExtension) 'extension',
+      if (watch.bySize) 'size',
+      if (watch.byDate) 'date',
+    ];
+    return modes.isEmpty ? 'category rules' : modes.join(', ');
   }
 }

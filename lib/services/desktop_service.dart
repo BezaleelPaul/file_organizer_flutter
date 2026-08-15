@@ -16,8 +16,10 @@ bool get isDesktop =>
 /// Initializes the window and tray. Call once, before [runApp].
 Future<void> initDesktop({required bool minimizeToTray}) async {
   if (!isDesktop) return;
+  MinimizeToTrayController.enabled = minimizeToTray;
   await windowManager.ensureInitialized();
-  await windowManager.setPreventClose(minimizeToTray);
+  // Closing is always intercepted so we can decide hide-to-tray vs. quit.
+  await windowManager.setPreventClose(true);
   LaunchAtStartup.instance.setup(
     appName: 'Mise',
     appPath: Platform.resolvedExecutable,
@@ -65,12 +67,32 @@ Future<void> onTrayMenuClick(String key) async {
   }
 }
 
-/// Hides the window instead of closing when minimize-to-tray is enabled.
+/// Current close behavior: hide to the tray (true) or quit (false).
+class MinimizeToTrayController {
+  static bool enabled = true;
+}
+
+/// Intercepts window close. Hides to the tray when minimize-to-tray is on,
+/// otherwise quits the app.
 class MinimizeToTrayListener extends WindowListener {
   @override
   void onWindowClose() async {
-    await windowManager.hide();
+    if (MinimizeToTrayController.enabled) {
+      await windowManager.hide();
+    } else {
+      await windowManager.destroy();
+    }
   }
+}
+
+/// Registers the close-to-tray listener. Call once at startup.
+void registerWindowCloseListener() {
+  windowManager.addListener(MinimizeToTrayListener());
+}
+
+/// Updates the close behavior to match the current minimize-to-tray setting.
+Future<void> syncMinimizeToTray(bool enabled) async {
+  MinimizeToTrayController.enabled = enabled;
 }
 
 Future<bool> launchAtStartupEnabled() async {
@@ -89,14 +111,6 @@ Future<bool> setLaunchAtStartupEnabled(bool enabled) async {
   } catch (_) {
     return false;
   }
-}
-
-/// Toggles whether closing the window hides to tray instead of quitting.
-Future<void> setPreventCloseEnabled(bool enabled) async {
-  if (!isDesktop) return;
-  try {
-    await windowManager.setPreventClose(enabled);
-  } catch (_) {}
 }
 
 /// Reveal a file (or its folder) in the operating system file manager.

@@ -39,7 +39,7 @@ class _HomeShellState extends State<HomeShell> {
       'Storage',
       'Organize',
       'Rules',
-      'Watch',
+      'Auto-organize',
       'History',
       'Settings',
     ];
@@ -49,7 +49,7 @@ class _HomeShellState extends State<HomeShell> {
       Icons.storage_outlined,
       Icons.folder_copy_outlined,
       Icons.tune_outlined,
-      Icons.visibility_outlined,
+      Icons.autorenew,
       Icons.history_outlined,
       Icons.settings_outlined,
     ];
@@ -59,7 +59,7 @@ class _HomeShellState extends State<HomeShell> {
       Icons.storage,
       Icons.folder_copy,
       Icons.tune,
-      Icons.visibility,
+      Icons.autorenew,
       Icons.history,
       Icons.settings,
     ];

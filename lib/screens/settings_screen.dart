@@ -42,7 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: const Text('Minimize to tray'),
                     subtitle: const Text(
                         'Closing the window keeps Mise running in the '
-                        'system tray so watched folders stay organized.'),
+                        'system tray so auto-organizing keeps working.'),
                     value: state.minimizeToTray,
                     onChanged: (v) => state.setMinimizeToTray(v),
                   ),
