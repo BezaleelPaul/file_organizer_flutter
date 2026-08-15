@@ -287,6 +287,14 @@ class _Config {
 class _Opts {
   _Opts();
 
+  /// Flags that take a value argument (`--config <file>`).
+  static const Set<String> _valueFlags = {
+    'config',
+    'date-template',
+    'rename',
+    'exclude',
+  };
+
   final List<String> positionals = [];
   final Set<String> flags = {};
   final Map<String, List<String>> values = {};
@@ -300,7 +308,9 @@ class _Opts {
         if (body.contains('=')) {
           final eq = body.indexOf('=');
           opts._add(body.substring(0, eq), body.substring(eq + 1));
-        } else if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+        } else if (_valueFlags.contains(body) &&
+            i + 1 < args.length &&
+            !args[i + 1].startsWith('-')) {
           opts._add(body, args[i + 1]);
           i += 1;
         } else {

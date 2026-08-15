@@ -61,6 +61,28 @@ void main() {
     expect(json['files'], 2);
     expect((json['categories'] as Map)['Images'], isNotNull);
   });
+
+  test('boolean flags may come before the folder', () async {
+    final dir = Directory.systemTemp.createTempSync('mise_plan_json');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    _write(dir.path, 'a.jpg', 'img');
+
+    final output = await _runCli(['plan', '--json', dir.path]);
+    expect(output.exitCode, 0);
+    final json = jsonDecode(output.out.trim()) as Map<String, dynamic>;
+    expect(json['would_move'], 1);
+  });
+
+  test('--quiet before the folder still organizes', () async {
+    final dir = Directory.systemTemp.createTempSync('mise_quiet');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    _write(dir.path, 'a.jpg', 'img');
+
+    final output = await _runCli(['organize', '--quiet', dir.path]);
+    expect(output.exitCode, 0);
+    expect(output.out, isNot(contains('Images')));
+    expect(File('${dir.path}/Images/a.jpg').existsSync(), isTrue);
+  });
 }
 
 void _write(String dir, String name, String content) {
