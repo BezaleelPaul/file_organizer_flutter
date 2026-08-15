@@ -28,6 +28,11 @@ class _TrayListener extends TrayListener {
   }
 
   @override
+  void onTrayIconRightMouseDown() {
+    trayManager.popUpContextMenu();
+  }
+
+  @override
   void onTrayMenuItemClick(MenuItem menuItem) {
     onTrayMenuClick(menuItem.key ?? '');
   }
