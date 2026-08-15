@@ -1,12 +1,20 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:crypto/crypto.dart';
 import 'package:file_organizer/core/models.dart';
 import 'package:file_organizer/core/storage/storage_service.dart';
-import 'dart:convert';
 
 /// In-memory fake storage for unit tests.
 class FakeStorage implements StorageService {
   final Map<String, List<FileEntry>> dirs = {};
   final Set<String> realDirs = {};
+  final Map<String, Uint8List> heads = {};
+
+  /// Seed the first bytes returned by [readHead] for a file.
+  void seedHead(String dir, String name, List<int> bytes) {
+    heads['$dir/$name'] = Uint8List.fromList(bytes);
+  }
 
   void seed(String dir, List<String> names, {bool realDirectory = true}) {
     dirs[dir] = [
@@ -108,6 +116,14 @@ class FakeStorage implements StorageService {
     // Deterministic per size: two files with the same size in the fake are
     // treated as byte-identical, which is enough to exercise detection.
     return sha256.convert(utf8.encode('${entry.size}')).toString();
+  }
+
+  @override
+  Future<Uint8List?> readHead(String directory, String name, int length) async {
+    final bytes = heads['$directory/$name'];
+    if (bytes == null) return null;
+    final end = length < bytes.length ? length : bytes.length;
+    return bytes.sublist(0, end);
   }
 
   @override

@@ -5,6 +5,8 @@
 /// through this interface so the organizer logic stays platform-free.
 library;
 
+import 'dart:typed_data';
+
 import 'package:file_organizer/core/models.dart';
 
 abstract class StorageService {
@@ -39,6 +41,10 @@ abstract class StorageService {
   /// Content hash for duplicate detection, or null when unsupported
   /// (e.g. Android SAF). The hash is stable for identical bytes.
   Future<String?> fileHash(String directory, String name);
+
+  /// The first [length] bytes of a file, for content-based classification.
+  /// Returns null when the backend cannot read contents.
+  Future<Uint8List?> readHead(String directory, String name, int length);
 
   /// Remove [directory] if it is now empty. Returns true if removed.
   Future<bool> removeEmptyDirectory(String directory);

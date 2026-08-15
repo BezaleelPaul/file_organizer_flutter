@@ -10,6 +10,7 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:file_organizer/core/models.dart';
@@ -406,6 +407,18 @@ class CliStorage implements StorageService {
     final file = File(p.join(directory, name));
     if (!await file.exists()) return null;
     return sha256.convert(await file.readAsBytes()).toString();
+  }
+
+  @override
+  Future<Uint8List?> readHead(String directory, String name, int length) async {
+    final file = File(p.join(directory, name));
+    if (!await file.exists()) return null;
+    final raf = await file.open();
+    try {
+      return await raf.read(length);
+    } finally {
+      await raf.close();
+    }
   }
 
   @override

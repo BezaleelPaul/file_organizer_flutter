@@ -1,6 +1,8 @@
 /// Storage backends that cannot touch the user's file system (web).
 library;
 
+import 'dart:typed_data';
+
 import 'package:file_organizer/core/models.dart';
 import 'package:file_organizer/core/storage/storage_service.dart';
 
@@ -37,6 +39,10 @@ class UnsupportedStorageService implements StorageService {
 
   @override
   Future<String?> fileHash(String directory, String name) async => null;
+
+  @override
+  Future<Uint8List?> readHead(String directory, String name, int length) async =>
+      null;
 
   @override
   Future<bool> removeEmptyDirectory(String directory) async => false;

@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show Color;
 
+import 'package:file_organizer/ai/suggestion_engine.dart';
 import 'package:file_organizer/core/models.dart';
 import 'package:file_organizer/core/organizer.dart';
 import 'package:file_organizer/core/rules.dart';
@@ -71,6 +72,10 @@ class AppState extends ChangeNotifier {
   String? root;
   String? rootLabel;
   ScanResult? scan;
+
+  /// Offline smart suggestions for the current scan (empty until loaded).
+  List<Suggestion> suggestions = [];
+  bool suggestionsLoading = false;
   List<HistoryEntry> history = [];
   List<WatchJob> watches = [];
   List<ScheduleJob> schedules = [];
@@ -193,6 +198,8 @@ class AppState extends ChangeNotifier {
             'before organizing.',
       );
       _setBusy(BusyKind.none);
+      suggestions = [];
+      _loadSuggestions();
     } catch (e) {
       error = e.toString();
       _setBusy(BusyKind.none);
@@ -307,6 +314,45 @@ class AppState extends ChangeNotifier {
         ? null
         : category;
     notifyListeners();
+  }
+
+  // ---- Smart suggestions ----
+
+  Future<void> _loadSuggestions() async {
+    final plan = scan;
+    if (plan == null) return;
+    suggestionsLoading = true;
+    suggestions = [];
+    notifyListeners();
+    try {
+      suggestions = await SuggestionEngine(
+        storage: storage,
+        categories: categories,
+      ).suggestAll(plan);
+    } catch (_) {
+      suggestions = [];
+    } finally {
+      suggestionsLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Apply one suggestion to its planned file.
+  void applySuggestion(Suggestion suggestion) {
+    final plan = scan;
+    if (plan == null) return;
+    for (final file in plan.files) {
+      if (file.name == suggestion.fileName) {
+        setOverride(file, suggestion.toCategory);
+        return;
+      }
+    }
+  }
+
+  void applyAllSuggestions() {
+    for (final suggestion in suggestions) {
+      applySuggestion(suggestion);
+    }
   }
 
   Future<void> setCategories(CategoryMap categories) async {

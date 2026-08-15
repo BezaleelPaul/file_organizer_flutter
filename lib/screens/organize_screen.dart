@@ -350,6 +350,7 @@ class _ReviewPanel extends StatelessWidget {
             ),
           ),
         ],
+        _suggestionsCard(context),
         const SizedBox(height: 16),
         Card(
           child: Column(
@@ -389,6 +390,86 @@ void _confirmTrash(BuildContext context, List<PlannedMove> files) {
             child: const Text('Move to Trash'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _suggestionsCard(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (state.suggestionsLoading && state.suggestions.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+              const SizedBox(width: 12),
+              Text('Analyzing files for smart suggestions…',
+                  style: TextStyle(color: scheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      );
+    }
+    final suggestions = state.suggestions;
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+    return Card(
+      color: scheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_awesome,
+                      color: scheme.onSecondaryContainer, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Smart suggestions (${suggestions.length})',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: state.busy == BusyKind.none
+                        ? () => state.applyAllSuggestions()
+                        : null,
+                    child: const Text('Apply all'),
+                  ),
+                ],
+              ),
+            ),
+            for (final suggestion in suggestions)
+              ListTile(
+                dense: true,
+                leading: Icon(Icons.auto_awesome,
+                    color: scheme.onSecondaryContainer, size: 18),
+                title: Text(suggestion.fileName,
+                    overflow: TextOverflow.ellipsis),
+                subtitle: Text(
+                  '${suggestion.fromCategory} → ${suggestion.toCategory}  •  '
+                  '${(suggestion.confidence * 100).round()}%  •  '
+                  '${suggestion.reason}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: TextButton(
+                  onPressed: state.busy == BusyKind.none
+                      ? () => state.applySuggestion(suggestion)
+                      : null,
+                  child: const Text('Apply'),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

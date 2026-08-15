@@ -2,6 +2,7 @@
 library;
 
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:file_organizer/core/models.dart';
@@ -96,6 +97,18 @@ class IoStorageService implements StorageService {
     if (!file.existsSync()) return null;
     final bytes = await file.readAsBytes();
     return sha256.convert(bytes).toString();
+  }
+
+  @override
+  Future<Uint8List?> readHead(String directory, String name, int length) async {
+    final file = File(p.join(directory, name));
+    if (!file.existsSync()) return null;
+    final raf = await file.open();
+    try {
+      return await raf.read(length);
+    } finally {
+      await raf.close();
+    }
   }
 
   @override

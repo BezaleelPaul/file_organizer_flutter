@@ -18,6 +18,7 @@ Targets **Windows**, **Linux**, **macOS**, **Android**, and **iOS**.
 | Organize | Scan a folder and move/copy files into category folders |
 | Rules | 12 built-in categories (Documents, Images, Videos, Music, Archives, Programs, Scripts, Code, Fonts, CAD, Data, Others) — fully editable |
 | Auto rules | Visual builder for multi-condition rules (extensions, name regex, size range, modified window) that route files to any folder |
+| Smart suggestions | Offline, no-AI-key heuristic engine that reads names + content signatures and suggests better categories before organizing |
 | Sort modes | By extension (default), by size bucket (Small/Medium/Large), by modification date (`YYYY-MM`) |
 | Safe | Never overwrites — collisions become `file (1).ext`, `file (2).ext` |
 | Undo | Every run writes an `undo_history.json` journal; undo moves everything back and removes created folders |
