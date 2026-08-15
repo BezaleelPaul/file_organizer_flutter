@@ -73,6 +73,7 @@ class AppState extends ChangeNotifier {
   ScanResult? scan;
   List<HistoryEntry> history = [];
   List<WatchJob> watches = [];
+  List<ScheduleJob> schedules = [];
 
   BusyKind busy = BusyKind.none;
   double progress = 0;
@@ -81,6 +82,7 @@ class AppState extends ChangeNotifier {
   String? error;
 
   Timer? _watchTimer;
+  Timer? _scheduleTimer;
   final Map<String, StreamSubscription<WatchEvent>> _osWatchers = {};
   final Map<String, Timer> _watchDebounces = {};
   bool _osWatchSupported = false;
@@ -104,6 +106,7 @@ class AppState extends ChangeNotifier {
     allowedCategories = await store.loadAllowedCategories();
     history = await store.loadHistory();
     watches = await store.loadWatches();
+    schedules = await store.loadSchedules();
     launchAtStartup = await store.loadLaunchAtStartup();
     minimizeToTray = await store.loadMinimizeToTray();
     try {
@@ -116,6 +119,7 @@ class AppState extends ChangeNotifier {
     _osWatchSupported =
         storage is IoStorageService && !kIsWeb && FileSystemEntity.isWatchSupported;
     _startWatching();
+    _startScheduler();
     initialized = true;
     notifyListeners();
   }
@@ -262,7 +266,17 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Organizer _organizer(String root) => Organizer(
+  Organizer _organizer(String root) =>
+    _organizerFor(root,
+        byExtension: byExtension, bySize: bySize, byDate: byDate);
+
+  Organizer _organizerFor(
+    String root, {
+    required bool byExtension,
+    required bool bySize,
+    required bool byDate,
+  }) =>
+      Organizer(
         storage: storage,
         root: root,
         categories: categories,
@@ -532,20 +546,11 @@ class AppState extends ChangeNotifier {
   Future<void> _runWatch(WatchJob watch) async {
     if (busy != BusyKind.none) return;
     try {
-      final organizer = Organizer(
-        storage: storage,
-        root: watch.root,
-        categories: categories,
+      final organizer = _organizerFor(
+        watch.root,
         byExtension: watch.byExtension,
         bySize: watch.bySize,
         byDate: watch.byDate,
-        patternRules: patternRules,
-        autoRules: autoRules,
-        detectDuplicates: detectDuplicates,
-        renameTemplate: renameTemplate,
-        dateTemplate: dateTemplate,
-        excludePatterns: excludePatterns,
-        allowedCategories: allowedCategories,
       );
       final plan = await organizer.scan();
       final actionable =
@@ -571,6 +576,86 @@ class AppState extends ChangeNotifier {
       watch.error = e.toString();
       watch.running = false;
       await store.saveWatches(watches);
+      notifyListeners();
+    }
+  }
+
+  // ---- Schedules ----
+
+  void _startScheduler() {
+    _scheduleTimer?.cancel();
+    _scheduleTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _checkSchedules();
+    });
+    _checkSchedules();
+  }
+
+  void _checkSchedules() {
+    final now = DateTime.now();
+    for (final job in schedules) {
+      if (!job.enabled) continue;
+      if (job.lastRun == null) {
+        // Prime the schedule so the first run lands on its next slot.
+        job.lastRun = now.toIso8601String();
+        continue;
+      }
+      if (now.isBefore(job.nextRun(now))) continue;
+      _runSchedule(job);
+    }
+  }
+
+  Future<void> addSchedule(ScheduleJob job) async {
+    schedules.add(job);
+    await store.saveSchedules(schedules);
+    notifyListeners();
+  }
+
+  Future<void> toggleSchedule(ScheduleJob job, bool enabled) async {
+    job.enabled = enabled;
+    await store.saveSchedules(schedules);
+    notifyListeners();
+  }
+
+  Future<void> removeSchedule(ScheduleJob job) async {
+    schedules.remove(job);
+    await store.saveSchedules(schedules);
+    notifyListeners();
+  }
+
+  Future<void> runScheduleNow(ScheduleJob job) => _runSchedule(job);
+
+  Future<void> _runSchedule(ScheduleJob job) async {
+    if (busy != BusyKind.none) return;
+    try {
+      final organizer = _organizerFor(
+        job.root,
+        byExtension: job.byExtension,
+        bySize: job.bySize,
+        byDate: job.byDate,
+      );
+      final plan = await organizer.scan();
+      job.lastRun = DateTime.now().toIso8601String();
+      final actionable =
+          plan.files.where((f) => !f.skipped && !f.isDuplicate).toList();
+      if (actionable.isEmpty) {
+        job.lastCount = 0;
+        notifyListeners();
+        return;
+      }
+      final entry = await organizer.execute(
+        actionable,
+        progress: (_, _) {},
+        log: (m) => addLog('[schedule] $m'),
+      );
+      history.insert(0, entry);
+      if (history.length > 50) history.removeRange(50, history.length);
+      await store.saveHistory(history);
+      job.lastCount = entry.count;
+      notifyListeners();
+    } catch (e) {
+      job.error = e.toString();
+      job.enabled = false;
+      await store.saveSchedules(schedules);
       notifyListeners();
     }
   }
@@ -651,6 +736,7 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _watchTimer?.cancel();
+    _scheduleTimer?.cancel();
     for (final sub in _osWatchers.values) {
       sub.cancel();
     }

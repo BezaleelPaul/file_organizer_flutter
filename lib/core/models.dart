@@ -309,6 +309,120 @@ class HistoryEntry {
       );
 }
 
+/// A scheduled background organize: run on an interval, daily, or on chosen
+/// weekdays. Active while Mise is running (including in the tray).
+class ScheduleJob {
+  ScheduleJob({
+    required this.root,
+    this.mode = 'interval',
+    this.intervalHours = 6,
+    this.hour = 2,
+    this.minute = 0,
+    this.weekdays = const [],
+    this.byExtension = true,
+    this.bySize = false,
+    this.byDate = false,
+  });
+
+  final String root;
+
+  /// `interval` | `daily` | `weekly`.
+  String mode;
+
+  /// Hours between runs in interval mode.
+  int intervalHours;
+
+  /// Time of day (24h) for daily/weekly modes.
+  int hour;
+  int minute;
+
+  /// 1 (Mon) … 7 (Sun). Empty in weekly mode means every day.
+  List<int> weekdays;
+
+  bool byExtension;
+  bool bySize;
+  bool byDate;
+
+  bool enabled = true;
+  String? lastRun;
+  int lastCount = 0;
+  String? error;
+
+  /// The next time this job should run, based on [now].
+  DateTime nextRun(DateTime now) {
+    final last = lastRun == null ? null : DateTime.tryParse(lastRun!);
+    switch (mode) {
+      case 'interval':
+        final base = last ?? now;
+        return base.add(Duration(hours: intervalHours));
+      case 'daily':
+        final today = DateTime(now.year, now.month, now.day, hour, minute);
+        return now.isBefore(today) ? today : today.add(const Duration(days: 1));
+      case 'weekly':
+        final days = weekdays.isEmpty ? const <int>[] : weekdays;
+        for (var d = 0; d < 7; d++) {
+          final day = now.add(Duration(days: d));
+          if (days.isNotEmpty && !days.contains(day.weekday)) continue;
+          final candidate = DateTime(day.year, day.month, day.day, hour, minute);
+          if (candidate.isAfter(now)) return candidate;
+        }
+        return now.add(const Duration(days: 1));
+      default:
+        return now;
+    }
+  }
+
+  /// Human-readable schedule summary, e.g. `Every 6h` or `Mon, Wed at 09:00`.
+  String describe() {
+    final flags = <String>[
+      if (byExtension) 'extension',
+      if (bySize) 'size',
+      if (byDate) 'date',
+    ];
+    final by = flags.isEmpty ? '' : ' (${flags.join('+')})';
+    switch (mode) {
+      case 'interval':
+        return 'Every $intervalHours h$by';
+      case 'daily':
+        return 'Daily at $hour:${minute.toString().padLeft(2, '0')}$by';
+      case 'weekly':
+        const names = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        final days = weekdays.isEmpty
+            ? 'every day'
+            : weekdays.map((w) => names[w]).join(', ');
+        return '$days at $hour:${minute.toString().padLeft(2, '0')}$by';
+      default:
+        return '';
+    }
+  }
+
+  Map<String, dynamic> toJson() => {
+        'root': root,
+        'mode': mode,
+        'interval_hours': intervalHours,
+        'hour': hour,
+        'minute': minute,
+        'weekdays': weekdays,
+        'by_extension': byExtension,
+        'by_size': bySize,
+        'by_date': byDate,
+      };
+
+  factory ScheduleJob.fromJson(Map<String, dynamic> json) => ScheduleJob(
+        root: json['root'] as String,
+        mode: json['mode'] as String? ?? 'interval',
+        intervalHours: json['interval_hours'] as int? ?? 6,
+        hour: json['hour'] as int? ?? 2,
+        minute: json['minute'] as int? ?? 0,
+        weekdays: (json['weekdays'] as List<dynamic>? ?? [])
+            .map((e) => e as int)
+            .toList(),
+        byExtension: json['by_extension'] as bool? ?? true,
+        bySize: json['by_size'] as bool? ?? false,
+        byDate: json['by_date'] as bool? ?? false,
+      );
+}
+
 /// A running auto-watch job.
 class WatchJob {
   WatchJob({

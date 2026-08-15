@@ -28,6 +28,7 @@ Targets **Windows**, **Linux**, **macOS**, **Android**, and **iOS**.
 | Collections | Save any search as a live, one-tap collection of matching files |
 | Storage | See space used per category, byte-identical duplicates (with reclaimable bytes), largest files and empty folders |
 | Watch | Dedicated screen for organizing flows with live progress |
+| Schedule | Background runs on an interval, daily, or on chosen weekdays (while Mise is running) |
 | Tray | System tray icon with hide-to-tray; keeps watched folders organizing in the background |
 | Auto-start | Launch Mise at sign-in (Settings) |
 | Updates | Checks GitHub Releases and prompts when a new version is available |
@@ -42,7 +43,8 @@ Targets **Windows**, **Linux**, **macOS**, **Android**, and **iOS**.
 - **Organize** — pick a folder, choose sort mode, preview the plan, run it.
 - **Rules** — edit categories and the extensions that map into them; open the
   visual **Auto rules** builder for multi-condition routing.
-- **Watch** — live progress while a run executes.
+- **Watch** — live progress while a run executes, plus a **Schedule** tab for
+  interval / daily / weekday background runs.
 - **History** — past runs with one-tap undo.
 
 ## Platform support

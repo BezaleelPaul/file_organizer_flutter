@@ -1,4 +1,5 @@
 import 'package:file_organizer/core/models.dart';
+import 'package:file_organizer/screens/schedule_tab.dart';
 import 'package:file_organizer/state/app_state.dart';
 import 'package:file_organizer/widgets/common.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +21,13 @@ class _WatchScreenState extends State<WatchScreen> {
     final state = widget.state;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Watch folders'),
+        title: const Text('Watch & schedule'),
+        bottom: const TabBar(
+          tabs: [
+            Tab(text: 'Watch folders'),
+            Tab(text: 'Schedule'),
+          ],
+        ),
         actions: [
           if (state.watches.isNotEmpty)
             IconButton(
@@ -34,41 +41,51 @@ class _WatchScreenState extends State<WatchScreen> {
             ),
         ],
       ),
-      body: state.watches.isEmpty
-          ? EmptyState(
-              icon: Icons.visibility_outlined,
-              title: 'No folders watched',
-              message:
-                  'Add a folder and Mise will keep it tidy in the '
-                  'background, sorting new files as they appear.',
-              action: PrimaryActionButton(
-                label: 'Add a folder',
-                icon: Icons.add,
-                onPressed: _addWatch,
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(24),
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: PrimaryActionButton(
-                    label: 'Add a folder',
-                    icon: Icons.add,
-                    onPressed: _addWatch,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                for (final watch in state.watches)
-                  _WatchCard(
-                    state: state,
-                    watch: watch,
-                    onToggle: (running) => state.toggleWatch(watch, running),
-                    onRemove: () => state.removeWatch(watch),
-                  ),
-              ],
-            ),
+      body: TabBarView(
+        children: [
+          _watchTab(context),
+          ScheduleTab(state: widget.state),
+        ],
+      ),
     );
+  }
+
+  Widget _watchTab(BuildContext context) {
+    final state = widget.state;
+    return state.watches.isEmpty
+        ? EmptyState(
+            icon: Icons.visibility_outlined,
+            title: 'No folders watched',
+            message:
+                'Add a folder and Mise will keep it tidy in the '
+                'background, sorting new files as they appear.',
+            action: PrimaryActionButton(
+              label: 'Add a folder',
+              icon: Icons.add,
+              onPressed: _addWatch,
+            ),
+          )
+        : ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: PrimaryActionButton(
+                  label: 'Add a folder',
+                  icon: Icons.add,
+                  onPressed: _addWatch,
+                ),
+              ),
+              const SizedBox(height: 16),
+              for (final watch in state.watches)
+                _WatchCard(
+                  state: state,
+                  watch: watch,
+                  onToggle: (running) => state.toggleWatch(watch, running),
+                  onRemove: () => state.removeWatch(watch),
+                ),
+            ],
+          );
   }
 
   Future<void> _addWatch() async {

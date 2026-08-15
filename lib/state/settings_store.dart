@@ -11,6 +11,7 @@ class SettingsStore {
   static const _keyCategories = 'categories';
   static const _keyHistory = 'history';
   static const _keyWatches = 'watches';
+  static const _keySchedules = 'schedules';
   static const _keyLastRoot = 'last_root';
   static const _keyPatternRules = 'pattern_rules';
   static const _keyAutoRules = 'auto_rules';
@@ -120,6 +121,26 @@ class SettingsStore {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
         _keyWatches, jsonEncode(watches.map((e) => e.toJson()).toList()));
+  }
+
+  Future<List<ScheduleJob>> loadSchedules() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_keySchedules);
+    if (raw == null) return [];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map((e) => ScheduleJob.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveSchedules(List<ScheduleJob> schedules) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        _keySchedules, jsonEncode(schedules.map((e) => e.toJson()).toList()));
   }
 
   Future<List<PatternRule>> loadPatternRules() async {
