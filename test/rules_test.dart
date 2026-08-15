@@ -66,6 +66,14 @@ void main() {
     test('handles files without extension', () {
       expect(uniqueName('LICENSE', {'LICENSE'}), 'LICENSE (1)');
     });
+
+    test('case-insensitive mode avoids case collisions', () {
+      expect(uniqueName('a.txt', {'A.txt'}, caseInsensitive: true), 'a (1).txt');
+      expect(
+        uniqueName('A.txt', {'a.txt', 'a (1).txt'}, caseInsensitive: true),
+        'A (2).txt',
+      );
+    });
   });
 
   test('sizeBucketFor boundaries', () {

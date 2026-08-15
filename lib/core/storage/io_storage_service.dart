@@ -18,6 +18,9 @@ class IoStorageService implements StorageService {
   String get label => 'Local file system';
 
   @override
+  bool get caseInsensitiveNames => Platform.isWindows || Platform.isMacOS;
+
+  @override
   Future<String?> pickDirectory() async {
     final result = await FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Select a folder to organize',
@@ -79,10 +82,14 @@ class IoStorageService implements StorageService {
   Future<void> copyFile(String srcDir, String srcName, String destDir, String destName) async {
     final src = File(p.join(srcDir, srcName));
     final dest = File(p.join(destDir, destName));
-    if (dest.existsSync()) {
-      dest.deleteSync();
+    if (!dest.existsSync()) {
+      src.copySync(dest.path);
+    } else {
+      // Should not happen (unique names are pre-computed), but never
+      // overwrite an existing file — pick a free name instead.
+      final unique = _freePath(destDir, destName);
+      src.copySync(unique);
     }
-    src.copySync(dest.path);
   }
 
   @override

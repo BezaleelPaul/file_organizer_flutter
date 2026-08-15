@@ -21,6 +21,9 @@ class SafStorageService implements StorageService {
   String get label => 'Android storage';
 
   @override
+  bool get caseInsensitiveNames => false;
+
+  @override
   Future<String?> pickDirectory() async {
     try {
       final uri = await _channel.invokeMethod<String>('pickTree');

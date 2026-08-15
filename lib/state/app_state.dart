@@ -7,13 +7,14 @@ import 'dart:ui' show Color;
 
 import 'package:file_organizer/ai/suggestion_engine.dart';
 import 'package:file_organizer/core/models.dart';
-import 'package:file_organizer/core/organizer.dart';
 import 'package:file_organizer/core/rules.dart';
 import 'package:file_organizer/core/update_checker.dart' as update;
 import 'package:file_organizer/core/storage/io_storage_service.dart';
 import 'package:file_organizer/core/storage/storage_factory.dart';
 import 'package:file_organizer/core/storage/storage_service.dart';
 import 'package:file_organizer/services/desktop_service.dart';
+import 'package:file_organizer/services/operation_queue.dart';
+import 'package:file_organizer/services/organize_service.dart';
 import 'package:file_organizer/state/settings_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -91,6 +92,40 @@ class AppState extends ChangeNotifier {
   final Map<String, StreamSubscription<WatchEvent>> _osWatchers = {};
   final Map<String, Timer> _watchDebounces = {};
   bool _osWatchSupported = false;
+
+  /// Serializes all organize/watch/schedule/undo/trash work so file moves
+  /// never run concurrently.
+  final OperationQueue _operations = OperationQueue();
+  late final OrganizeService _organize = OrganizeService(storage: storage);
+
+  /// Snapshot of the current settings for one organize run. [byExtension],
+  /// [bySize] and [byDate] come from the global flags unless overridden by a
+  /// watch/schedule job.
+  OrganizeConfig _config({
+    bool? byExtension,
+    bool? bySize,
+    bool? byDate,
+  }) =>
+      OrganizeConfig(
+        categories: categories,
+        byExtension: byExtension ?? this.byExtension,
+        bySize: bySize ?? this.bySize,
+        byDate: byDate ?? this.byDate,
+        copyInsteadOfMove: copyInsteadOfMove,
+        detectDuplicates: detectDuplicates,
+        renameTemplate: renameTemplate,
+        dateTemplate: dateTemplate,
+        patternRules: patternRules,
+        autoRules: autoRules,
+        excludePatterns: excludePatterns,
+        allowedCategories: allowedCategories,
+      );
+
+  Future<void> _recordHistory(HistoryEntry entry) async {
+    history.insert(0, entry);
+    if (history.length > 50) history.removeRange(50, history.length);
+    await store.saveHistory(history);
+  }
 
   Future<void> _init() async {
     categories = await store.loadCategories();
@@ -185,26 +220,27 @@ class AppState extends ChangeNotifier {
   Future<void> scanRoot() async {
     final current = root;
     if (current == null || busy != BusyKind.none) return;
-    _setBusy(BusyKind.scanning);
-    addLog('Scanning…');
-    try {
-      final organizer = _organizer(current);
-      scan = await organizer.scan();
-      status = '${scan!.files.length} files found';
-      addLog(status);
-      completion = CompletionMessage(
-        title: 'Scan complete',
-        message:
-            '${scan!.files.length} files found in ${scan!.root}. Review them '
-            'before organizing.',
-      );
-      _setBusy(BusyKind.none);
-      suggestions = [];
-      _loadSuggestions();
-    } catch (e) {
-      error = e.toString();
-      _setBusy(BusyKind.none);
-    }
+    await _operations.run(() async {
+      _setBusy(BusyKind.scanning);
+      addLog('Scanning…');
+      try {
+        scan = await _organize.scan(current, _config());
+        status = '${scan!.files.length} files found';
+        addLog(status);
+        completion = CompletionMessage(
+          title: 'Scan complete',
+          message:
+              '${scan!.files.length} files found in ${scan!.root}. Review them '
+              'before organizing.',
+        );
+        _setBusy(BusyKind.none);
+        suggestions = [];
+        _loadSuggestions();
+      } catch (e) {
+        error = e.toString();
+        _setBusy(BusyKind.none);
+      }
+    });
   }
 
   Future<void> organize() async {
@@ -216,90 +252,65 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    _setBusy(BusyKind.organizing);
-    addLog('Organizing…');
-    try {
-      final organizer = _organizer(current);
-      final entry = await organizer.execute(
-        plan,
-        progress: (done, total) {
-          progress = total == 0 ? 1 : done / total;
-          notifyListeners();
-        },
-        log: (m) => addLog(m),
-      );
-      history.insert(0, entry);
-      if (history.length > 50) history.removeRange(50, history.length);
-      await store.saveHistory(history);
-      final folderCount =
-          entry.moves.map((m) => m.destDir).toSet().length;
-      status = '${entry.count} files ${copyInsteadOfMove ? 'copied' : 'moved'}';
-      addLog(status);
-      completion = CompletionMessage(
-        title: copyInsteadOfMove ? 'Files copied' : 'All organized',
-        message:
-            '${entry.count} files ${copyInsteadOfMove ? 'copied' : 'moved'} into '
-            '$folderCount ${folderCount == 1 ? 'folder' : 'folders'}.',
-        undoEntry: entry,
-      );
-      _setBusy(BusyKind.none);
-    } catch (e) {
-      error = e.toString();
-      addLog('ERROR: $e');
-      _setBusy(BusyKind.none);
-    }
+    await _operations.run(() async {
+      _setBusy(BusyKind.organizing);
+      addLog('Organizing…');
+      try {
+        final entry = await _organize.executePlan(
+          current,
+          plan,
+          _config(),
+          progress: (done, total) {
+            progress = total == 0 ? 1 : done / total;
+            notifyListeners();
+          },
+          log: (m) => addLog(m),
+        );
+        await _recordHistory(entry);
+        final folderCount =
+            entry.moves.map((m) => m.destDir).toSet().length;
+        status = '${entry.count} files ${copyInsteadOfMove ? 'copied' : 'moved'}';
+        addLog(status);
+        completion = CompletionMessage(
+          title: copyInsteadOfMove ? 'Files copied' : 'All organized',
+          message:
+              '${entry.count} files ${copyInsteadOfMove ? 'copied' : 'moved'} into '
+              '$folderCount ${folderCount == 1 ? 'folder' : 'folders'}.',
+          undoEntry: entry,
+        );
+        _setBusy(BusyKind.none);
+      } catch (e) {
+        error = e.toString();
+        addLog('ERROR: $e');
+        _setBusy(BusyKind.none);
+      }
+    });
   }
 
   Future<void> undo(HistoryEntry entry) async {
     if (busy != BusyKind.none) return;
-    _setBusy(BusyKind.undo);
-    addLog('Undoing ${entry.count} files…');
-    try {
-      final organizer = _organizer(entry.root);
-      await organizer.undo(entry, log: (m) => addLog(m));
-      history.removeWhere((h) => identical(h, entry) || h == entry);
-      await store.saveHistory(history);
-      status = 'Undone ${entry.count} files';
-      addLog(status);
-      completion = CompletionMessage(
-        title: 'Changes undone',
-        message: '${entry.count} files have been restored to their original '
-            'folders.',
-      );
-      _setBusy(BusyKind.none);
-    } catch (e) {
-      error = e.toString();
-      addLog('ERROR: $e');
-      _setBusy(BusyKind.none);
-    }
+    await _operations.run(() async {
+      _setBusy(BusyKind.undo);
+      addLog('Undoing ${entry.count} files…');
+      try {
+        await _organize.undo(entry, log: (m) => addLog(m));
+        history.removeWhere((h) => identical(h, entry) || h == entry);
+        await store.saveHistory(history);
+        status = 'Undone ${entry.count} files';
+        addLog(status);
+        completion = CompletionMessage(
+          title: 'Changes undone',
+          message: '${entry.count} files have been restored to their original '
+              'folders.',
+        );
+        _setBusy(BusyKind.none);
+      } catch (e) {
+        error = e.toString();
+        addLog('ERROR: $e');
+        _setBusy(BusyKind.none);
+      }
+    });
   }
-
-  Organizer _organizer(String root) =>
-    _organizerFor(root,
-        byExtension: byExtension, bySize: bySize, byDate: byDate);
-
-  Organizer _organizerFor(
-    String root, {
-    required bool byExtension,
-    required bool bySize,
-    required bool byDate,
-  }) =>
-      Organizer(
-        storage: storage,
-        root: root,
-        categories: categories,
-        byExtension: byExtension,
-        bySize: bySize,
-        byDate: byDate,
-        copyInsteadOfMove: copyInsteadOfMove,
-        patternRules: patternRules,
-        autoRules: autoRules,
-        detectDuplicates: detectDuplicates,
-        renameTemplate: renameTemplate,
-        dateTemplate: dateTemplate,
-        excludePatterns: excludePatterns,
-        allowedCategories: allowedCategories,
-      );
 
   // ---- Rules ----
 
@@ -580,7 +591,7 @@ class AppState extends ChangeNotifier {
     _startWatching();
     await _syncTrayMenu();
     notifyListeners();
-    _runWatch(watches.last);
+    _runWatch(watches.last, wait: true);
   }
 
   Future<void> toggleWatch(WatchJob watch, bool running) async {
@@ -599,8 +610,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Run a single watch job immediately.
-  Future<void> runWatchNow(WatchJob watch) => _runWatch(watch);
+  /// Run a single watch job immediately (waits for other operations to finish).
+  Future<void> runWatchNow(WatchJob watch) => _runWatch(watch, wait: true);
 
   /// Pauses or resumes every watch folder (tray menu).
   Future<void> _toggleAllWatches() async {
@@ -627,42 +638,38 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    if (busy != BusyKind.none) return;
-    _setBusy(BusyKind.organizing);
-    addLog('Organizing from the tray…');
-    try {
-      final organizer = _organizer(current);
-      final plan = await organizer.scan();
-      final actionable =
-          plan.files.where((f) => !f.skipped && !f.isDuplicate).toList();
-      if (actionable.isEmpty) {
+    await _operations.run(() async {
+      _setBusy(BusyKind.organizing);
+      addLog('Organizing from the tray…');
+      try {
+        final result = await _organize.organize(
+          current,
+          _config(),
+          log: (m) => addLog('[tray] $m'),
+        );
+        final entry = result.entry;
+        if (entry == null) {
+          completion = CompletionMessage(
+            title: 'Nothing to organize',
+            message: 'Files are already in order.',
+          );
+          _setBusy(BusyKind.none);
+          return;
+        }
+        await _recordHistory(entry);
         completion = CompletionMessage(
-          title: 'Nothing to organize',
-          message: '${plan.files.length} files are already in order.',
+          title: 'Organized from the tray',
+          message: '${entry.count} file${entry.count == 1 ? '' : 's'} organized '
+              'in $current.',
+          undoEntry: entry,
         );
         _setBusy(BusyKind.none);
-        return;
+      } catch (e) {
+        error = e.toString();
+        addLog('ERROR: $e');
+        _setBusy(BusyKind.none);
       }
-      final entry = await organizer.execute(
-        actionable,
-        progress: (_, _) {},
-        log: (m) => addLog('[tray] $m'),
-      );
-      history.insert(0, entry);
-      if (history.length > 50) history.removeRange(50, history.length);
-      await store.saveHistory(history);
-      completion = CompletionMessage(
-        title: 'Organized from the tray',
-        message: '${entry.count} file${entry.count == 1 ? '' : 's'} organized '
-            'in $current.',
-        undoEntry: entry,
-      );
-      _setBusy(BusyKind.none);
-    } catch (e) {
-      error = e.toString();
-      addLog('ERROR: $e');
-      _setBusy(BusyKind.none);
-    }
+    });
   }
 
   /// Routes tray menu actions to the matching app action.
@@ -684,42 +691,31 @@ class AppState extends ChangeNotifier {
   Future<void> _syncTrayMenu() =>
       syncTrayMenu(anyWatchRunning: watches.any((w) => w.running));
 
-  Future<void> _runWatch(WatchJob watch) async {
-    if (busy != BusyKind.none) return;
-    try {
-      final organizer = _organizerFor(
-        watch.root,
-        byExtension: watch.byExtension,
-        bySize: watch.bySize,
-        byDate: watch.byDate,
-      );
-      final plan = await organizer.scan();
-      final actionable =
-          plan.files.where((f) => !f.skipped && !f.isDuplicate).toList();
-      if (actionable.isEmpty) {
+  Future<void> _runWatch(WatchJob watch, {bool wait = false}) {
+    return _operations.run(() async {
+      try {
+        final result = await _organize.organize(
+          watch.root,
+          _config(
+            byExtension: watch.byExtension,
+            bySize: watch.bySize,
+            byDate: watch.byDate,
+          ),
+          log: (m) => addLog('[watch] $m'),
+        );
+        final entry = result.entry;
         watch.lastRun = DateTime.now().toIso8601String();
-        watch.lastCount = 0;
+        watch.lastCount = entry?.count ?? 0;
+        if (entry != null) await _recordHistory(entry);
         notifyListeners();
-        return;
+      } catch (e) {
+        watch.error = e.toString();
+        watch.running = false;
+        await store.saveWatches(watches);
+        await _syncTrayMenu();
+        notifyListeners();
       }
-      final entry = await organizer.execute(
-        actionable,
-        progress: (_, _) {},
-        log: (m) => addLog('[watch] $m'),
-      );
-      history.insert(0, entry);
-      if (history.length > 50) history.removeRange(50, history.length);
-      await store.saveHistory(history);
-      watch.lastRun = DateTime.now().toIso8601String();
-      watch.lastCount = entry.count;
-      notifyListeners();
-    } catch (e) {
-      watch.error = e.toString();
-      watch.running = false;
-      await store.saveWatches(watches);
-      await _syncTrayMenu();
-      notifyListeners();
-    }
+    }, skipIfBusy: !wait);
   }
 
   // ---- Schedules ----
@@ -764,42 +760,32 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> runScheduleNow(ScheduleJob job) => _runSchedule(job);
+  Future<void> runScheduleNow(ScheduleJob job) => _runSchedule(job, wait: true);
 
-  Future<void> _runSchedule(ScheduleJob job) async {
-    if (busy != BusyKind.none) return;
-    try {
-      final organizer = _organizerFor(
-        job.root,
-        byExtension: job.byExtension,
-        bySize: job.bySize,
-        byDate: job.byDate,
-      );
-      final plan = await organizer.scan();
-      job.lastRun = DateTime.now().toIso8601String();
-      final actionable =
-          plan.files.where((f) => !f.skipped && !f.isDuplicate).toList();
-      if (actionable.isEmpty) {
-        job.lastCount = 0;
+  Future<void> _runSchedule(ScheduleJob job, {bool wait = false}) {
+    return _operations.run(() async {
+      try {
+        final result = await _organize.organize(
+          job.root,
+          _config(
+            byExtension: job.byExtension,
+            bySize: job.bySize,
+            byDate: job.byDate,
+          ),
+          log: (m) => addLog('[schedule] $m'),
+        );
+        final entry = result.entry;
+        job.lastRun = DateTime.now().toIso8601String();
+        job.lastCount = entry?.count ?? 0;
+        if (entry != null) await _recordHistory(entry);
         notifyListeners();
-        return;
+      } catch (e) {
+        job.error = e.toString();
+        job.enabled = false;
+        await store.saveSchedules(schedules);
+        notifyListeners();
       }
-      final entry = await organizer.execute(
-        actionable,
-        progress: (_, _) {},
-        log: (m) => addLog('[schedule] $m'),
-      );
-      history.insert(0, entry);
-      if (history.length > 50) history.removeRange(50, history.length);
-      await store.saveHistory(history);
-      job.lastCount = entry.count;
-      notifyListeners();
-    } catch (e) {
-      job.error = e.toString();
-      job.enabled = false;
-      await store.saveSchedules(schedules);
-      notifyListeners();
-    }
+    }, skipIfBusy: !wait);
   }
 
   // ---- Trash ----
@@ -808,31 +794,35 @@ class AppState extends ChangeNotifier {
   Future<void> trashFiles(List<PlannedMove> files) async {
     final current = root;
     if (current == null || files.isEmpty || busy != BusyKind.none) return;
-    _setBusy(BusyKind.organizing);
-    addLog('Moving ${files.length} files to Trash…');
-    try {
-      final organizer = _organizer(current);
-      final entry = await organizer.trash(files, log: (m) => addLog(m));
-      for (final move in files) {
-        move.skipped = true;
+    await _operations.run(() async {
+      _setBusy(BusyKind.organizing);
+      addLog('Moving ${files.length} files to Trash…');
+      try {
+        final entry = await _organize.trash(
+          current,
+          files,
+          _config(),
+          log: (m) => addLog(m),
+        );
+        for (final move in files) {
+          move.skipped = true;
+        }
+        await _recordHistory(entry);
+        status = '${entry.count} files trashed';
+        addLog(status);
+        completion = CompletionMessage(
+          title: 'Moved to Trash',
+          message: '${entry.count} files moved to the Trash folder. You can '
+              'undo this from History.',
+          undoEntry: entry,
+        );
+        _setBusy(BusyKind.none);
+      } catch (e) {
+        error = e.toString();
+        addLog('ERROR: $e');
+        _setBusy(BusyKind.none);
       }
-      history.insert(0, entry);
-      if (history.length > 50) history.removeRange(50, history.length);
-      await store.saveHistory(history);
-      status = '${entry.count} files trashed';
-      addLog(status);
-      completion = CompletionMessage(
-        title: 'Moved to Trash',
-        message: '${entry.count} files moved to the Trash folder. You can '
-            'undo this from History.',
-        undoEntry: entry,
-      );
-      _setBusy(BusyKind.none);
-    } catch (e) {
-      error = e.toString();
-      addLog('ERROR: $e');
-      _setBusy(BusyKind.none);
-    }
+    });
   }
 
   /// Skip every file flagged as a duplicate.

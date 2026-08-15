@@ -29,6 +29,10 @@ abstract class StorageService {
   /// The handle for a child directory named [name] (creates it if needed).
   Future<String> ensureDirectory(String directory, String name);
 
+  /// Whether this backend's file system treats names case-insensitively
+  /// (true on Windows and macOS), so name collisions must ignore case.
+  bool get caseInsensitiveNames => false;
+
   /// Move [srcName] from [srcDir] into [destDir] as [destName].
   Future<void> moveFile(String srcDir, String srcName, String destDir, String destName);
 

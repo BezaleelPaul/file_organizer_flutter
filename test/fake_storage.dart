@@ -53,6 +53,15 @@ class FakeStorage implements StorageService {
   bool get isSupported => true;
 
   @override
+  bool get caseInsensitiveNames => _caseInsensitive;
+
+  /// When true, name collision checks ignore case (Windows/macOS behavior).
+  bool _caseInsensitive = false;
+
+  /// Seed [caseInsensitiveNames] to exercise case-insensitive naming.
+  void setCaseInsensitive([bool value = true]) => _caseInsensitive = value;
+
+  @override
   String get label => 'fake';
 
   @override

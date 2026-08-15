@@ -127,16 +127,21 @@ bool isExcluded(String name, List<String> excludePatterns) {
 ///
 /// [existing] holds names already present in the destination folder plus any
 /// names already claimed during this run. Returns `file (1).txt`, `file (2).txt`,
-/// etc. until a free name is found.
-String uniqueName(String fileName, Set<String> existing) {
-  if (!existing.contains(fileName)) return fileName;
+/// etc. until a free name is found. When [caseInsensitive] is true (Windows /
+/// macOS filesystems), collisions ignore letter case.
+String uniqueName(String fileName, Set<String> existing,
+    {bool caseInsensitive = false}) {
+  bool taken(String name) => caseInsensitive
+      ? existing.any((e) => e.toLowerCase() == name.toLowerCase())
+      : existing.contains(name);
+  if (!taken(fileName)) return fileName;
   final dot = fileName.lastIndexOf('.');
   final stem = dot > 0 ? fileName.substring(0, dot) : fileName;
   final suffix = dot > 0 ? fileName.substring(dot) : '';
   var counter = 1;
   while (true) {
     final candidate = '$stem ($counter)$suffix';
-    if (!existing.contains(candidate)) return candidate;
+    if (!taken(candidate)) return candidate;
     counter += 1;
   }
 }

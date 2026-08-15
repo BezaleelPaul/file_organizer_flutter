@@ -165,5 +165,27 @@ void main() {
       expect(storage.dirs['/dl'], hasLength(1));
       expect(storage.dirs['/dl/Images'], hasLength(1));
     });
+
+    test('case-insensitive storage avoids case-name collisions', () async {
+      final storage = FakeStorage()..setCaseInsensitive();
+      storage.seed('/dl', ['report.PDF']);
+      storage.seed('/dl/Documents', ['report.pdf'], realDirectory: true);
+
+      final organizer = Organizer(
+        storage: storage,
+        root: '/dl',
+        categories: defaultCategories,
+        byExtension: true,
+        bySize: false,
+        byDate: false,
+      );
+
+      final plan = await organizer.scan();
+      await organizer.execute(plan.files, progress: (_, _) {});
+
+      final names = storage.dirs['/dl/Documents']!.map((e) => e.name).toList();
+      expect(names, contains('report.pdf'));
+      expect(names, contains('report (1).PDF'));
+    });
   });
 }

@@ -352,6 +352,9 @@ class CliStorage implements StorageService {
   String get label => 'Local file system';
 
   @override
+  bool get caseInsensitiveNames => Platform.isWindows || Platform.isMacOS;
+
+  @override
   Future<String?> pickDirectory() async => null;
 
   @override

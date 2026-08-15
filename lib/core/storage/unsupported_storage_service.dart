@@ -14,6 +14,9 @@ class UnsupportedStorageService implements StorageService {
   String get label => 'Browser (no file access)';
 
   @override
+  bool get caseInsensitiveNames => false;
+
+  @override
   Future<String?> pickDirectory() async => null;
 
   @override

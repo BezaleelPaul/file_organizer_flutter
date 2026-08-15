@@ -194,7 +194,8 @@ class Organizer {
     Future<String> freeName(String destDir, String desired) async {
       final pool = await namesFor(destDir);
       claimed.putIfAbsent(destDir, () => <String>{});
-      final name = uniqueName(desired, {...pool, ...claimed[destDir]!});
+      final name = uniqueName(desired, {...pool, ...claimed[destDir]!},
+          caseInsensitive: storage.caseInsensitiveNames);
       pool.add(name);
       claimed[destDir]!.add(name);
       return name;
@@ -278,7 +279,8 @@ class Organizer {
     final existing =
         (await storage.listDirectory(trashDir)).map((e) => e.name).toSet();
     for (final move in moves) {
-      final name = uniqueName(move.name, {...existing, ...claimed});
+      final name = uniqueName(move.name, {...existing, ...claimed},
+          caseInsensitive: storage.caseInsensitiveNames);
       existing.add(name);
       claimed.add(name);
       log?.call('${move.name} → Trash/$name');
