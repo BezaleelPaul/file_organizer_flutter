@@ -47,6 +47,95 @@ class PatternRule {
       );
 }
 
+/// A first-class automation rule built in the visual rule builder: files whose
+/// extension, name, size and modification time all match are sent to
+/// [category]. First matching rule wins (list order).
+class AutoRule {
+  AutoRule({
+    required this.name,
+    this.category = 'Others',
+    this.extensions = const [],
+    this.namePattern = '',
+    this.minSize,
+    this.maxSize,
+    this.modifiedAfter,
+    this.modifiedBefore,
+    this.enabled = true,
+  });
+
+  String name;
+  String category;
+
+  /// Lower-cased extensions with the leading dot (e.g. `.pdf`). Empty = any.
+  List<String> extensions;
+
+  /// Regex matched against the file name. Empty = any.
+  String namePattern;
+
+  int? minSize;
+  int? maxSize;
+  DateTime? modifiedAfter;
+  DateTime? modifiedBefore;
+  bool enabled;
+
+  RegExp? get nameRegex {
+    if (namePattern.isEmpty) return null;
+    try {
+      return RegExp(namePattern);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  /// Whether a file matches every active condition.
+  bool matches({
+    required String fileName,
+    required String extension,
+    required int size,
+    required DateTime modified,
+  }) {
+    if (!enabled) return false;
+    if (extensions.isNotEmpty && !extensions.contains(extension)) return false;
+    final regex = nameRegex;
+    if (regex != null && !regex.hasMatch(fileName)) return false;
+    if (minSize != null && size < minSize!) return false;
+    if (maxSize != null && size > maxSize!) return false;
+    if (modifiedAfter != null && modified.isBefore(modifiedAfter!)) return false;
+    if (modifiedBefore != null && modified.isAfter(modifiedBefore!)) return false;
+    return true;
+  }
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'category': category,
+        'extensions': extensions,
+        'name_pattern': namePattern,
+        'min_size': minSize,
+        'max_size': maxSize,
+        'modified_after': modifiedAfter?.toIso8601String(),
+        'modified_before': modifiedBefore?.toIso8601String(),
+        'enabled': enabled,
+      };
+
+  factory AutoRule.fromJson(Map<String, dynamic> json) => AutoRule(
+        name: json['name'] as String? ?? 'Untitled rule',
+        category: json['category'] as String? ?? 'Others',
+        extensions: (json['extensions'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        namePattern: json['name_pattern'] as String? ?? '',
+        minSize: json['min_size'] as int?,
+        maxSize: json['max_size'] as int?,
+        modifiedAfter: json['modified_after'] == null
+            ? null
+            : DateTime.tryParse(json['modified_after'] as String),
+        modifiedBefore: json['modified_before'] == null
+            ? null
+            : DateTime.tryParse(json['modified_before'] as String),
+        enabled: json['enabled'] as bool? ?? true,
+      );
+}
+
 /// A file and the folder it will be moved into.
 class PlannedMove {
   PlannedMove({

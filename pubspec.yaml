@@ -13,10 +13,16 @@ dependencies:
   crypto: ^3.0.3
   cupertino_icons: ^1.0.8
   file_picker: ^10.0.0
+  http: ^1.2.2
+  launch_at_startup: ^0.5.1
+  package_info_plus: ^8.3.0
   path: ^1.9.0
   path_provider: ^2.1.4
   shared_preferences: ^2.3.2
+  tray_manager: ^0.2.4
+  url_launcher: ^6.3.1
   watcher: ^1.2.1
+  window_manager: ^0.4.3
 
 dev_dependencies:
   flutter_test:
@@ -34,6 +40,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/icon/app_icon.png
+    - assets/icon/app_icon.ico
 
   # To add assets to your application, add an assets section, like this:
   # assets:

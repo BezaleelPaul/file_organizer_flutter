@@ -13,6 +13,7 @@ class SettingsStore {
   static const _keyWatches = 'watches';
   static const _keyLastRoot = 'last_root';
   static const _keyPatternRules = 'pattern_rules';
+  static const _keyAutoRules = 'auto_rules';
   static const _keyExcludes = 'excludes';
   static const _keyAllowedCategories = 'allowed_categories';
   static const _keyRenameTemplate = 'rename_template';
@@ -138,6 +139,26 @@ class SettingsStore {
         _keyPatternRules, jsonEncode(rules.map((e) => e.toJson()).toList()));
   }
 
+  Future<List<AutoRule>> loadAutoRules() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_keyAutoRules);
+    if (raw == null) return [];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map((e) => AutoRule.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveAutoRules(List<AutoRule> rules) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        _keyAutoRules, jsonEncode(rules.map((e) => e.toJson()).toList()));
+  }
+
   Future<List<String>> loadExcludes() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getStringList(_keyExcludes) ?? [];
@@ -186,5 +207,25 @@ class SettingsStore {
   Future<void> saveDetectDuplicates(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyDetectDuplicates, value);
+  }
+
+  Future<bool> loadLaunchAtStartup() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('launch_at_startup') ?? false;
+  }
+
+  Future<void> saveLaunchAtStartup(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('launch_at_startup', value);
+  }
+
+  Future<bool> loadMinimizeToTray() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('minimize_to_tray') ?? true;
+  }
+
+  Future<void> saveMinimizeToTray(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('minimize_to_tray', value);
   }
 }

@@ -2,6 +2,9 @@ import 'package:file_organizer/screens/dashboard_screen.dart';
 import 'package:file_organizer/screens/history_screen.dart';
 import 'package:file_organizer/screens/organize_screen.dart';
 import 'package:file_organizer/screens/rules_screen.dart';
+import 'package:file_organizer/screens/search_screen.dart';
+import 'package:file_organizer/screens/settings_screen.dart';
+import 'package:file_organizer/screens/storage_screen.dart';
 import 'package:file_organizer/screens/watch_screen.dart';
 import 'package:file_organizer/state/app_state.dart';
 import 'package:flutter/material.dart';
@@ -22,25 +25,43 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final screens = [
       DashboardScreen(state: widget.state),
+      SearchScreen(state: widget.state),
+      StorageScreen(state: widget.state),
       OrganizeScreen(state: widget.state),
       RulesScreen(state: widget.state),
       WatchScreen(state: widget.state),
       HistoryScreen(state: widget.state),
+      SettingsScreen(state: widget.state),
     ];
-    final labels = const ['Dashboard', 'Organize', 'Rules', 'Watch', 'History'];
+    final labels = const [
+      'Dashboard',
+      'Search',
+      'Storage',
+      'Organize',
+      'Rules',
+      'Watch',
+      'History',
+      'Settings',
+    ];
     final icons = const [
       Icons.dashboard_outlined,
+      Icons.search_outlined,
+      Icons.storage_outlined,
       Icons.folder_copy_outlined,
       Icons.tune_outlined,
       Icons.visibility_outlined,
       Icons.history_outlined,
+      Icons.settings_outlined,
     ];
     final selectedIcons = const [
       Icons.dashboard,
+      Icons.search,
+      Icons.storage,
       Icons.folder_copy,
       Icons.tune,
       Icons.visibility,
       Icons.history,
+      Icons.settings,
     ];
 
     final width = MediaQuery.of(context).size.width;

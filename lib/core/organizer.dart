@@ -19,6 +19,7 @@ class Organizer {
     this.byDate = false,
     this.copyInsteadOfMove = false,
     this.patternRules = const [],
+    this.autoRules = const [],
     this.detectDuplicates = false,
     this.renameTemplate = '',
     this.dateTemplate = '{year}-{month}',
@@ -36,6 +37,11 @@ class Organizer {
 
   /// Regex filename rules evaluated after extension matching.
   final List<PatternRule> patternRules;
+
+  /// First-class automation rules built in the visual rule builder. They win
+  /// over extension/pattern classification: the first enabled rule that
+  /// matches overrides the file's category.
+  final List<AutoRule> autoRules;
 
   /// When true, files that are byte-identical to another scanned file are
   /// flagged (`isDuplicate`) so the caller can skip or trash them.
@@ -77,6 +83,18 @@ class Organizer {
         patternRules: patternRules,
         fileName: name,
       );
+      for (final rule in autoRules) {
+        if (!rule.enabled) continue;
+        if (rule.matches(
+          fileName: name,
+          extension: ext,
+          size: entry.size,
+          modified: entry.modified,
+        )) {
+          category = rule.category;
+          break;
+        }
+      }
       if (allowedCategories.isNotEmpty && !allowedCategories.contains(category)) {
         category = 'Others';
       }

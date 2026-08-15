@@ -17,19 +17,28 @@ Targets **Windows**, **Linux**, **macOS**, **Android**, and **iOS**.
 |---------|-------------|
 | Organize | Scan a folder and move/copy files into category folders |
 | Rules | 12 built-in categories (Documents, Images, Videos, Music, Archives, Programs, Scripts, Code, Fonts, CAD, Data, Others) — fully editable |
+| Auto rules | Visual builder for multi-condition rules (extensions, name regex, size range, modified window) that route files to any folder |
 | Sort modes | By extension (default), by size bucket (Small/Medium/Large), by modification date (`YYYY-MM`) |
 | Safe | Never overwrites — collisions become `file (1).ext`, `file (2).ext` |
 | Undo | Every run writes an `undo_history.json` journal; undo moves everything back and removes created folders |
 | Copy mode | Option to copy instead of move (leaves originals in place) |
 | History | Review past runs and undo them at any time |
+| Search | Index a folder and search instantly: `report`, `*.pdf`, `type:image`, `>100MB`, `modified:last-week` |
+| Storage | See space used per category, byte-identical duplicates (with reclaimable bytes), largest files and empty folders |
 | Watch | Dedicated screen for organizing flows with live progress |
+| Tray | System tray icon with hide-to-tray; keeps watched folders organizing in the background |
+| Auto-start | Launch Mise at sign-in (Settings) |
+| Updates | Checks GitHub Releases and prompts when a new version is available |
 | Dark/light | Follows system theme via Material 3 |
 
 ## Screens
 
 - **Dashboard** — overview of the current state and quick actions.
+- **Search** — instant indexed search across a folder with rich queries.
+- **Storage** — deep analysis: category breakdown, duplicates, large files, empty folders.
 - **Organize** — pick a folder, choose sort mode, preview the plan, run it.
-- **Rules** — edit categories and the extensions that map into them.
+- **Rules** — edit categories and the extensions that map into them; open the
+  visual **Auto rules** builder for multi-condition routing.
 - **Watch** — live progress while a run executes.
 - **History** — past runs with one-tap undo.
 
@@ -109,8 +118,8 @@ flutter build ipa --release --no-codesign
 flutter test
 ```
 
-Tests cover the classification rules, the unique-name logic, and the organizer
-engine against a fake storage backend (`test/`).
+Tests cover the classification rules, the unique-name logic, the organizer
+engine against a fake storage backend, and the search query parser (`test/`).
 
 ---
 
@@ -133,11 +142,14 @@ manually from the **Actions** tab (workflow_dispatch) without a tag.
 
 | Artifact | Contents |
 |----------|----------|
-| `file_organizer-windows.zip` | Windows exe + runtime DLLs |
-| `file_organizer-linux.tar.gz` | Linux release bundle |
-| `file_organizer-macos.tar.gz` | macOS `.app` bundle |
-| `file_organizer-ios.tar.gz` | iOS `.xcarchive` (unsigned; codesign before install) |
-| `file_organizer-android.tar.gz` | Android `.aab` + `.apk` |
+| `mise-windows.zip` | Windows exe + runtime DLLs |
+| `mise-setup-*.exe` | Windows **installer** (Inno Setup) |
+| `mise-linux.tar.gz` | Linux release bundle |
+| `mise_*.deb` | Linux Debian package |
+| `Mise-*.AppImage` | Linux AppImage |
+| `mise-macos.tar.gz` | macOS `.app` bundle |
+| `mise-ios.tar.gz` | iOS `.xcarchive` (unsigned; codesign before install) |
+| `mise-android.tar.gz` | Android `.aab` + `.apk` |
 
 The workflow uses a build matrix (`windows-latest`, `ubuntu-latest`,
 `macos-latest`) with pinned Flutter `3.41.9`, then a `release` job that collects
@@ -145,22 +157,25 @@ every artifact into a single GitHub Release with auto-generated release notes.
 
 ### Before shipping to stores
 
-The current pipeline produces **unsigned** builds for a quick first release.
-Production distribution needs real signing:
+The pipeline builds **unsigned** builds for a quick first release, but the
+workflow automatically signs when you add these secrets (steps are skipped when
+they're absent):
 
+- **Windows** — `WINDOWS_CERT_BASE64` (Base64 PFX) + `WINDOWS_CERT_PASSWORD`
+  signs the exe and the installer with `signtool` (removes SmartScreen
+  "unknown publisher").
+- **macOS** — `MACOS_CERT_BASE64` (Base64 .p12) + `MACOS_CERT_PASSWORD` +
+  optional `MACOS_IDENTITY` signs with Developer ID; add `APPLE_ID`,
+  `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` to also **notarize**.
 - **Android** — replace the debug signing config in
-  `android/app/build.gradle.kts` with a keystore. Store the keystore and its
-  passwords as GitHub secrets and wire them into the workflow.
+  `android/app/build.gradle.kts` with a keystore and wire it into the workflow.
 - **iOS** — set up an Apple Developer signing certificate + provisioning profile
   as GitHub secrets and remove `--no-codesign`. **A device cannot install an
   unsigned build at all**, so iOS is blocked until then.
-- **macOS** — the app runs **without the App Sandbox** (`app-sandbox: false`
-  in `macos/Runner/*.entitlements`) so it can read and move files anywhere on
-  disk, like Hazel/File Arbor. The CI build is ad-hoc signed, so on first
-  launch macOS Gatekeeper will still show *"cannot be opened because the
-  developer cannot be verified"* — right-click the app → **Open** once (or run
-  `xattr -dr com.apple.quarantine file_organizer.app`). For frictionless
-  distribution, add Developer ID signing + notarization as GitHub secrets.
+
+Without signing, macOS is ad-hoc signed and Gatekeeper will show *"cannot be
+opened because the developer cannot be verified"* — right-click → **Open** once
+(or `xattr -dr com.apple.quarantine file_organizer.app`).
 
 ---
 
@@ -174,6 +189,7 @@ lib/
 │   ├── organizer.dart            # Engine: scan → plan → execute → undo
 │   ├── models.dart               # CategoryMap, FileEntry, PlannedMove, HistoryEntry
 │   ├── rules.dart                # Classification, size buckets, unique naming
+│   ├── disk_scanner.dart         # Recursive scan, duplicates, large/empty, Trash
 │   └── storage/
 │       ├── storage_service.dart  # Abstract storage interface
 │       ├── io_storage_service.dart      # dart:io backend (desktop/iOS)
@@ -186,10 +202,16 @@ lib/
 ├── screens/
 │   ├── home_shell.dart           # Navigation (rail on desktop, bar on mobile)
 │   ├── dashboard_screen.dart
+│   ├── search_screen.dart
+│   ├── storage_screen.dart
 │   ├── organize_screen.dart
 │   ├── rules_screen.dart
+│   ├── auto_rule_screen.dart    # Visual rule builder
 │   ├── watch_screen.dart
 │   └── history_screen.dart
+├── search/
+│   ├── query.dart                # Search query parser + matcher
+│   └── search_service.dart       # Indexing + on-disk cache
 └── widgets/
     ├── common.dart               # Shared widgets
     ├── completion_dialog.dart    # Run-complete dialog

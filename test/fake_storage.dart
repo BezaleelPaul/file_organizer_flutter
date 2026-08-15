@@ -34,6 +34,13 @@ class FakeStorage implements StorageService {
     realDirs.add(dir);
   }
 
+  /// Seed an arbitrary file entry (custom size and modified date).
+  void seedEntry(String dir, FileEntry entry) {
+    dirs[dir] ??= [];
+    dirs[dir]!.add(entry);
+    realDirs.add(dir);
+  }
+
   @override
   bool get isSupported => true;
 

@@ -1,16 +1,34 @@
 import 'package:file_organizer/screens/home_shell.dart';
+import 'package:file_organizer/services/desktop_service.dart';
 import 'package:file_organizer/state/app_state.dart';
 import 'package:file_organizer/state/settings_store.dart';
 import 'package:file_organizer/theme.dart';
 import 'package:file_organizer/widgets/completion_dialog.dart';
 import 'package:file_organizer/widgets/splash_screen.dart';
+import 'package:file_organizer/widgets/update_listener.dart';
 import 'package:flutter/material.dart';
+import 'package:tray_manager/tray_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final store = SettingsStore();
+  final minimizeToTray = await store.loadMinimizeToTray();
+  await initDesktop(minimizeToTray: minimizeToTray);
+  TrayManager.instance.addListener(_TrayListener());
   final state = AppState(store: store);
   runApp(FileOrganizerApp(state: state));
+}
+
+class _TrayListener extends TrayListener {
+  @override
+  void onTrayIconMouseDown() {
+    onTrayMenuClick('show');
+  }
+
+  @override
+  void onTrayMenuItemClick(MenuItem menuItem) {
+    onTrayMenuClick(menuItem.key ?? '');
+  }
 }
 
 class FileOrganizerApp extends StatelessWidget {
@@ -30,7 +48,10 @@ class FileOrganizerApp extends StatelessWidget {
           darkTheme: buildTheme(Brightness.dark),
           builder: (context, child) => CompletionListener(
             state: state,
-            child: child ?? const SizedBox.shrink(),
+            child: UpdateListener(
+              state: state,
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
           home: AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),

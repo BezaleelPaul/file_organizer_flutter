@@ -7,11 +7,14 @@ import 'dart:io';
 import 'package:file_organizer/core/models.dart';
 import 'package:file_organizer/core/organizer.dart';
 import 'package:file_organizer/core/rules.dart';
+import 'package:file_organizer/core/update_checker.dart' as update;
 import 'package:file_organizer/core/storage/io_storage_service.dart';
 import 'package:file_organizer/core/storage/storage_factory.dart';
 import 'package:file_organizer/core/storage/storage_service.dart';
+import 'package:file_organizer/services/desktop_service.dart';
 import 'package:file_organizer/state/settings_store.dart';
 import 'package:flutter/foundation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:watcher/watcher.dart';
 
 enum BusyKind { none, scanning, organizing, undo }
@@ -53,8 +56,13 @@ class AppState extends ChangeNotifier {
   String renameTemplate = '';
   String dateTemplate = '{year}-{month}';
   List<PatternRule> patternRules = [];
+  List<AutoRule> autoRules = [];
   List<String> excludePatterns = [];
   Set<String> allowedCategories = {};
+  bool launchAtStartup = false;
+  bool minimizeToTray = true;
+  update.UpdateInfo? availableUpdate;
+  String appVersion = '';
 
   String? root;
   String? rootLabel;
@@ -84,10 +92,18 @@ class AppState extends ChangeNotifier {
     renameTemplate = await store.loadRenameTemplate();
     dateTemplate = await store.loadDateTemplate();
     patternRules = await store.loadPatternRules();
+    autoRules = await store.loadAutoRules();
     excludePatterns = await store.loadExcludes();
     allowedCategories = await store.loadAllowedCategories();
     history = await store.loadHistory();
     watches = await store.loadWatches();
+    launchAtStartup = await store.loadLaunchAtStartup();
+    minimizeToTray = await store.loadMinimizeToTray();
+    try {
+      appVersion = (await PackageInfo.fromPlatform()).version;
+    } catch (_) {
+      appVersion = '';
+    }
     final lastRoot = await store.loadLastRoot();
     if (lastRoot != null) root = lastRoot;
     _osWatchSupported =
@@ -248,6 +264,7 @@ class AppState extends ChangeNotifier {
         byDate: byDate,
         copyInsteadOfMove: copyInsteadOfMove,
         patternRules: patternRules,
+        autoRules: autoRules,
         detectDuplicates: detectDuplicates,
         renameTemplate: renameTemplate,
         dateTemplate: dateTemplate,
@@ -302,6 +319,12 @@ class AppState extends ChangeNotifier {
   Future<void> setPatternRules(List<PatternRule> rules) async {
     patternRules = rules.where((r) => r.pattern.isNotEmpty).toList();
     await store.savePatternRules(patternRules);
+    notifyListeners();
+  }
+
+  Future<void> setAutoRules(List<AutoRule> rules) async {
+    autoRules = rules;
+    await store.saveAutoRules(autoRules);
     notifyListeners();
   }
 
@@ -432,6 +455,7 @@ class AppState extends ChangeNotifier {
         bySize: watch.bySize,
         byDate: watch.byDate,
         patternRules: patternRules,
+        autoRules: autoRules,
         detectDuplicates: detectDuplicates,
         renameTemplate: renameTemplate,
         dateTemplate: dateTemplate,
@@ -506,6 +530,36 @@ class AppState extends ChangeNotifier {
     for (final file in scan.files) {
       if (file.isDuplicate) file.skipped = true;
     }
+    notifyListeners();
+  }
+
+  // ---- Settings ----
+
+  Future<void> setLaunchAtStartup(bool enabled) async {
+    launchAtStartup = enabled;
+    await store.saveLaunchAtStartup(enabled);
+    await setLaunchAtStartupEnabled(enabled);
+    notifyListeners();
+  }
+
+  Future<void> setMinimizeToTray(bool enabled) async {
+    minimizeToTray = enabled;
+    await store.saveMinimizeToTray(enabled);
+    if (isDesktop) {
+      await setPreventCloseEnabled(enabled);
+    }
+    notifyListeners();
+  }
+
+  Future<void> checkForUpdates() async {
+    if (kIsWeb) return;
+    final info = await update.checkForUpdates(currentVersion: appVersion);
+    availableUpdate = info;
+    notifyListeners();
+  }
+
+  void dismissUpdate() {
+    availableUpdate = null;
     notifyListeners();
   }
 

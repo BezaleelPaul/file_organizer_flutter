@@ -1,5 +1,6 @@
 import 'package:file_organizer/core/models.dart';
 import 'package:file_organizer/core/rules.dart';
+import 'package:file_organizer/screens/auto_rule_screen.dart';
 import 'package:file_organizer/state/app_state.dart';
 import 'package:file_organizer/widgets/common.dart';
 import 'package:flutter/material.dart';
@@ -142,6 +143,17 @@ class _RulesScreenState extends State<RulesScreen> {
       appBar: AppBar(
         title: const Text('Rules'),
         actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => AutoRuleScreen(state: widget.state),
+                ),
+              );
+            },
+            icon: const Icon(Icons.rule_outlined),
+            label: const Text('Auto rules'),
+          ),
           TextButton.icon(
             onPressed: _reset,
             icon: const Icon(Icons.restart_alt),
