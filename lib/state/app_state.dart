@@ -125,6 +125,7 @@ class AppState extends ChangeNotifier {
         storage is IoStorageService && !kIsWeb && FileSystemEntity.isWatchSupported;
     _startWatching();
     _startScheduler();
+    await _syncTrayMenu();
     initialized = true;
     notifyListeners();
   }
@@ -577,6 +578,7 @@ class AppState extends ChangeNotifier {
     ));
     await store.saveWatches(watches);
     _startWatching();
+    await _syncTrayMenu();
     notifyListeners();
     _runWatch(watches.last);
   }
@@ -585,6 +587,7 @@ class AppState extends ChangeNotifier {
     watch.running = running;
     await store.saveWatches(watches);
     _startWatching();
+    await _syncTrayMenu();
     notifyListeners();
   }
 
@@ -592,11 +595,94 @@ class AppState extends ChangeNotifier {
     watches.remove(watch);
     await store.saveWatches(watches);
     _startWatching();
+    await _syncTrayMenu();
     notifyListeners();
   }
 
   /// Run a single watch job immediately.
   Future<void> runWatchNow(WatchJob watch) => _runWatch(watch);
+
+  /// Pauses or resumes every watch folder (tray menu).
+  Future<void> _toggleAllWatches() async {
+    if (watches.isEmpty) return;
+    final anyRunning = watches.any((w) => w.running);
+    for (final w in watches) {
+      w.running = !anyRunning;
+    }
+    await store.saveWatches(watches);
+    _startWatching();
+    await _syncTrayMenu();
+    notifyListeners();
+  }
+
+  /// Organizes the last-used folder right now (tray menu).
+  Future<void> _runQuickOrganize() async {
+    final current = root;
+    if (current == null) {
+      completion = CompletionMessage(
+        title: 'Nothing to organize',
+        message: 'Pick a folder in Mise first, then try again.',
+        success: false,
+      );
+      notifyListeners();
+      return;
+    }
+    if (busy != BusyKind.none) return;
+    _setBusy(BusyKind.organizing);
+    addLog('Organizing from the tray…');
+    try {
+      final organizer = _organizer(current);
+      final plan = await organizer.scan();
+      final actionable =
+          plan.files.where((f) => !f.skipped && !f.isDuplicate).toList();
+      if (actionable.isEmpty) {
+        completion = CompletionMessage(
+          title: 'Nothing to organize',
+          message: '${plan.files.length} files are already in order.',
+        );
+        _setBusy(BusyKind.none);
+        return;
+      }
+      final entry = await organizer.execute(
+        actionable,
+        progress: (_, _) {},
+        log: (m) => addLog('[tray] $m'),
+      );
+      history.insert(0, entry);
+      if (history.length > 50) history.removeRange(50, history.length);
+      await store.saveHistory(history);
+      completion = CompletionMessage(
+        title: 'Organized from the tray',
+        message: '${entry.count} file${entry.count == 1 ? '' : 's'} organized '
+            'in $current.',
+        undoEntry: entry,
+      );
+      _setBusy(BusyKind.none);
+    } catch (e) {
+      error = e.toString();
+      addLog('ERROR: $e');
+      _setBusy(BusyKind.none);
+    }
+  }
+
+  /// Routes tray menu actions to the matching app action.
+  Future<void> handleTrayAction(String action) async {
+    switch (action) {
+      case 'organize':
+        await _runQuickOrganize();
+      case 'reveal':
+        final current = root;
+        if (current != null) {
+          unawaited(revealInFileManager(current));
+        }
+      case 'toggle_watches':
+        await _toggleAllWatches();
+    }
+  }
+
+  /// Keeps the tray menu's pause/resume label in sync with the watches.
+  Future<void> _syncTrayMenu() =>
+      syncTrayMenu(anyWatchRunning: watches.any((w) => w.running));
 
   Future<void> _runWatch(WatchJob watch) async {
     if (busy != BusyKind.none) return;
@@ -631,6 +717,7 @@ class AppState extends ChangeNotifier {
       watch.error = e.toString();
       watch.running = false;
       await store.saveWatches(watches);
+      await _syncTrayMenu();
       notifyListeners();
     }
   }

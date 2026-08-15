@@ -17,6 +17,7 @@ void main() async {
   registerWindowCloseListener();
   TrayManager.instance.addListener(_TrayListener());
   final state = AppState(store: store);
+  setTrayActionHandler(state.handleTrayAction);
   runApp(FileOrganizerApp(state: state));
 }
 

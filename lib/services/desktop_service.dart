@@ -46,9 +46,26 @@ Future<void> _setTrayIcon() async {
   }
 }
 
+bool _anyWatchRunning = false;
+
+/// App-level tray actions (e.g. "Organize now") wired from main.dart.
+Future<void> Function(String action)? trayActionHandler;
+
+/// Lets the app connect tray menu actions to application state.
+void setTrayActionHandler(Future<void> Function(String action) handler) {
+  trayActionHandler = handler;
+}
+
 Future<void> _refreshTrayMenu() async {
   final menu = Menu(items: [
     MenuItem(key: 'show', label: 'Open Mise'),
+    MenuItem(key: 'organize', label: 'Organize now'),
+    MenuItem(key: 'reveal', label: 'Open last folder'),
+    MenuItem(
+      key: 'toggle_watches',
+      label: _anyWatchRunning ? 'Pause auto-organize' : 'Resume auto-organize',
+    ),
+    MenuItem.separator(),
     MenuItem(key: 'quit', label: 'Exit'),
   ]);
   // On Windows the context menu is bound to the tray icon's message window;
@@ -64,12 +81,25 @@ Future<void> _refreshTrayMenu() async {
   }
 }
 
+/// Refreshes the tray menu after watch state changes so the pause/resume
+/// label stays accurate.
+Future<void> syncTrayMenu({required bool anyWatchRunning}) async {
+  if (!isDesktop) return;
+  _anyWatchRunning = anyWatchRunning;
+  await _refreshTrayMenu();
+}
+
 /// Handles tray menu clicks (called from the tray listener).
 Future<void> onTrayMenuClick(String key) async {
   switch (key) {
     case 'show':
       await windowManager.show();
       await windowManager.focus();
+    case 'organize':
+    case 'reveal':
+    case 'toggle_watches':
+      final handler = trayActionHandler;
+      if (handler != null) await handler(key);
     case 'quit':
       await windowManager.destroy();
   }
