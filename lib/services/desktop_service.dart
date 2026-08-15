@@ -47,13 +47,21 @@ Future<void> _setTrayIcon() async {
 }
 
 Future<void> _refreshTrayMenu() async {
-  try {
-    await trayManager.setToolTip('Mise — everything in its place');
-    await trayManager.setContextMenu(Menu(items: [
-      MenuItem(key: 'show', label: 'Open Mise'),
-      MenuItem(key: 'quit', label: 'Quit'),
-    ]));
-  } catch (_) {}
+  final menu = Menu(items: [
+    MenuItem(key: 'show', label: 'Open Mise'),
+    MenuItem(key: 'quit', label: 'Exit'),
+  ]);
+  // On Windows the context menu is bound to the tray icon's message window;
+  // retry briefly in case it is not registered yet at startup.
+  for (var attempt = 0; attempt < 3; attempt++) {
+    try {
+      await trayManager.setToolTip('Mise — everything in its place');
+      await trayManager.setContextMenu(menu);
+      return;
+    } catch (_) {
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    }
+  }
 }
 
 /// Handles tray menu clicks (called from the tray listener).

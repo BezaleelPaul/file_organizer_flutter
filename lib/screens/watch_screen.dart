@@ -19,33 +19,36 @@ class _WatchScreenState extends State<WatchScreen> {
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Auto-organize'),
-        bottom: const TabBar(
-          tabs: [
-            Tab(text: 'Active folders'),
-            Tab(text: 'Schedule'),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Auto-organize'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Active folders'),
+              Tab(text: 'Schedule'),
+            ],
+          ),
+          actions: [
+            if (state.watches.isNotEmpty)
+              IconButton(
+                tooltip: 'Run all now',
+                icon: const Icon(Icons.play_arrow),
+                onPressed: () {
+                  for (final watch in state.watches) {
+                    if (watch.running) state.runWatchNow(watch);
+                  }
+                },
+              ),
           ],
         ),
-        actions: [
-          if (state.watches.isNotEmpty)
-            IconButton(
-              tooltip: 'Run all now',
-              icon: const Icon(Icons.play_arrow),
-              onPressed: () {
-                for (final watch in state.watches) {
-                  if (watch.running) state.runWatchNow(watch);
-                }
-              },
-            ),
-        ],
-      ),
-      body: TabBarView(
-        children: [
-          _watchTab(context),
-          ScheduleTab(state: widget.state),
-        ],
+        body: TabBarView(
+          children: [
+            _watchTab(context),
+            ScheduleTab(state: widget.state),
+          ],
+        ),
       ),
     );
   }

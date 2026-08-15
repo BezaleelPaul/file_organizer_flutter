@@ -94,23 +94,26 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Search'),
-        bottom: TabBar(
-          tabs: const [
-            Tab(text: 'Search'),
-            Tab(text: 'Tags'),
-            Tab(text: 'Collections'),
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Search'),
+          bottom: TabBar(
+            tabs: const [
+              Tab(text: 'Search'),
+              Tab(text: 'Tags'),
+              Tab(text: 'Collections'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _searchTab(context),
+            _tagsTab(context),
+            _collectionsTab(context),
           ],
         ),
-      ),
-      body: TabBarView(
-        children: [
-          _searchTab(context),
-          _tagsTab(context),
-          _collectionsTab(context),
-        ],
       ),
     );
   }
