@@ -24,6 +24,8 @@ Targets **Windows**, **Linux**, **macOS**, **Android**, and **iOS**.
 | Copy mode | Option to copy instead of move (leaves originals in place) |
 | History | Review past runs and undo them at any time |
 | Search | Index a folder and search instantly: `report`, `*.pdf`, `type:image`, `>100MB`, `modified:last-week` |
+| Tags | Color-coded labels you attach to files; filter with `tag:work` |
+| Collections | Save any search as a live, one-tap collection of matching files |
 | Storage | See space used per category, byte-identical duplicates (with reclaimable bytes), largest files and empty folders |
 | Watch | Dedicated screen for organizing flows with live progress |
 | Tray | System tray icon with hide-to-tray; keeps watched folders organizing in the background |
@@ -34,7 +36,8 @@ Targets **Windows**, **Linux**, **macOS**, **Android**, and **iOS**.
 ## Screens
 
 - **Dashboard** — overview of the current state and quick actions.
-- **Search** — instant indexed search across a folder with rich queries.
+- **Search** — instant indexed search with rich queries, plus **Tags** and
+  **Smart Collections** (saved searches) tabs.
 - **Storage** — deep analysis: category breakdown, duplicates, large files, empty folders.
 - **Organize** — pick a folder, choose sort mode, preview the plan, run it.
 - **Rules** — edit categories and the extensions that map into them; open the

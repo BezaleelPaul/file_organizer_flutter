@@ -60,8 +60,12 @@ class SearchIndex {
 
   int get totalBytes => entries.fold(0, (sum, e) => sum + e.size);
 
-  /// All files matching [query], sorted by name then size.
-  List<SearchEntry> runQuery(String query) {
+  /// All files matching [query], sorted by name then size. [tagsByPath] maps
+  /// absolute paths to the file's tag names (lower-cased) for `tag:` filters.
+  List<SearchEntry> runQuery(
+    String query, {
+    Map<String, List<String>>? tagsByPath,
+  }) {
     final parsed = parseQuery(query);
     if (parsed.isEmpty) return const [];
     final matches = entries.where((e) => matchQuery(
@@ -71,6 +75,9 @@ class SearchIndex {
           ext: e.ext,
           size: e.size,
           modified: e.modified,
+          tags: (tagsByPath?[e.path] ?? const <String>[])
+              .map((t) => t.toLowerCase())
+              .toSet(),
         ));
     return sortResults(matches.toList(), (e) => e.name, (e) => e.size);
   }

@@ -14,6 +14,9 @@ class SettingsStore {
   static const _keyLastRoot = 'last_root';
   static const _keyPatternRules = 'pattern_rules';
   static const _keyAutoRules = 'auto_rules';
+  static const _keyTags = 'tags';
+  static const _keyFileTags = 'file_tags';
+  static const _keyCollections = 'collections';
   static const _keyExcludes = 'excludes';
   static const _keyAllowedCategories = 'allowed_categories';
   static const _keyRenameTemplate = 'rename_template';
@@ -157,6 +160,64 @@ class SettingsStore {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
         _keyAutoRules, jsonEncode(rules.map((e) => e.toJson()).toList()));
+  }
+
+  Future<List<Tag>> loadTags() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_keyTags);
+    if (raw == null) return [];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map((e) => Tag.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveTags(List<Tag> tags) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        _keyTags, jsonEncode(tags.map((e) => e.toJson()).toList()));
+  }
+
+  Future<Map<String, List<String>>> loadFileTags() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_keyFileTags);
+    if (raw == null) return {};
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return decoded.map((path, names) => MapEntry(
+          path, (names as List<dynamic>).map((e) => e.toString()).toList()));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> saveFileTags(Map<String, List<String>> fileTags) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyFileTags, jsonEncode(fileTags));
+  }
+
+  Future<List<SmartCollection>> loadCollections() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_keyCollections);
+    if (raw == null) return [];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map((e) => SmartCollection.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveCollections(List<SmartCollection> collections) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyCollections,
+        jsonEncode(collections.map((e) => e.toJson()).toList()));
   }
 
   Future<List<String>> loadExcludes() async {

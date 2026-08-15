@@ -32,6 +32,7 @@ class SearchQuery {
     this.nameContains,
     this.extension,
     this.types = const {},
+    this.tags = const {},
     this.folderContains,
     this.minBytes,
     this.maxBytes,
@@ -44,6 +45,9 @@ class SearchQuery {
   final String? nameContains;
   final String? extension;
   final Set<String> types;
+
+  /// Tag names that must all be present on the file (`tag:work tag:urgent`).
+  final Set<String> tags;
   final String? folderContains;
   final int? minBytes;
   final int? maxBytes;
@@ -55,6 +59,7 @@ class SearchQuery {
       nameContains == null &&
       extension == null &&
       types.isEmpty &&
+      tags.isEmpty &&
       folderContains == null &&
       minBytes == null &&
       maxBytes == null &&
@@ -68,6 +73,7 @@ SearchQuery parseQuery(String input) {
   String? nameContains;
   String? extension;
   final types = <String>{};
+  final tags = <String>{};
   String? folderContains;
   int? minBytes;
   int? maxBytes;
@@ -98,6 +104,10 @@ SearchQuery parseQuery(String input) {
     }
     if (key == 'type' && value != null && value.isNotEmpty) {
       types.add(value.toLowerCase());
+      continue;
+    }
+    if (key == 'tag' && value != null && value.isNotEmpty) {
+      tags.add(value.toLowerCase());
       continue;
     }
     if (key == 'folder' && value != null && value.isNotEmpty) {
@@ -150,6 +160,7 @@ SearchQuery parseQuery(String input) {
     nameContains: nameContains,
     extension: extension,
     types: types,
+    tags: tags,
     folderContains: folderContains,
     minBytes: minBytes,
     maxBytes: maxBytes,
@@ -256,7 +267,8 @@ DateTime? _parseDate(String value) {
 
 /// Whether [entry] satisfies [query]. Called per file with [ext] already
 /// lower-cased with the leading dot (e.g. `.pdf`), [name] and [path] as
-/// found on disk, and [modified] as the last-modified time.
+/// found on disk, and [modified] as the last-modified time. [tags] are the
+/// file's user-assigned tag names (lower-cased).
 bool matchQuery(
   SearchQuery query, {
   required String name,
@@ -264,6 +276,7 @@ bool matchQuery(
   required String ext,
   required int size,
   required DateTime modified,
+  Set<String>? tags,
 }) {
   final lowerName = name.toLowerCase();
 
@@ -286,6 +299,12 @@ bool matchQuery(
       (t) => typeExtensions[t]?.contains(bare) ?? false,
     );
     if (!ok) return false;
+  }
+  if (query.tags.isNotEmpty) {
+    final fileTags = tags ?? const <String>{};
+    for (final tag in query.tags) {
+      if (!fileTags.contains(tag)) return false;
+    }
   }
   if (query.folderContains != null &&
       !path.toLowerCase().contains(query.folderContains!.toLowerCase())) {
@@ -315,4 +334,4 @@ List<T> sortResults<T>(List<T> items, String Function(T) nameOf, int Function(T)
 
 /// Human-readable example shown in the search box.
 const searchHint = 'Search everything…  e.g. report, *.pdf, type:image, '
-    '>100MB, modified:last-week';
+    'tag:work, >100MB, modified:last-week';

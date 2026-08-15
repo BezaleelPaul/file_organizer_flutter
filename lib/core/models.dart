@@ -18,6 +18,39 @@ class FileEntry {
   final DateTime modified;
 }
 
+/// A user-defined label that can be attached to files and used to filter
+/// search results (`tag:work`).
+class Tag {
+  Tag({required this.name, this.color = 0});
+
+  final String name;
+
+  /// Index into the tag color palette shown in the UI.
+  int color;
+
+  Map<String, dynamic> toJson() => {'name': name, 'color': color};
+
+  factory Tag.fromJson(Map<String, dynamic> json) => Tag(
+        name: json['name'] as String,
+        color: json['color'] as int? ?? 0,
+      );
+}
+
+/// A saved search query shown as a live collection of matching files.
+class SmartCollection {
+  SmartCollection({required this.name, required this.query});
+
+  String name;
+  String query;
+
+  Map<String, dynamic> toJson() => {'name': name, 'query': query};
+
+  factory SmartCollection.fromJson(Map<String, dynamic> json) => SmartCollection(
+        name: json['name'] as String? ?? 'Untitled collection',
+        query: json['query'] as String? ?? '',
+      );
+}
+
 /// A custom regex pattern rule: files whose name matches [pattern] go to
 /// [category]. Works alongside extension-based sorting.
 class PatternRule {
