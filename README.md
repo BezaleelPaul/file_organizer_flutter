@@ -29,6 +29,7 @@ Targets **Windows**, **Linux**, **macOS**, **Android**, and **iOS**.
 | Storage | See space used per category, byte-identical duplicates (with reclaimable bytes), largest files and empty folders |
 | Watch | Dedicated screen for organizing flows with live progress |
 | Schedule | Background runs on an interval, daily, or on chosen weekdays (while Mise is running) |
+| CLI | Headless `plan` / `organize` / `stats` commands for scripts and cron |
 | Tray | System tray icon with hide-to-tray; keeps watched folders organizing in the background |
 | Auto-start | Launch Mise at sign-in (Settings) |
 | Updates | Checks GitHub Releases and prompts when a new version is available |
@@ -124,7 +125,37 @@ flutter test
 ```
 
 Tests cover the classification rules, the unique-name logic, the organizer
-engine against a fake storage backend, and the search query parser (`test/`).
+engine against a fake storage backend, the search query parser, the visual
+rule builder, tags/collections, schedule math, and the CLI end-to-end
+(`test/`).
+
+---
+
+## Command-line interface
+
+The same engine powers a headless CLI for scripts, cron jobs and CI:
+
+```sh
+dart run file_organizer:mise plan <folder>      # preview, no changes
+dart run file_organizer:mise organize <folder>  # sort the folder
+dart run file_organizer:mise stats <folder>     # per-category totals
+```
+
+Common options: `--by-size`, `--by-date`, `--copy`, `--detect-duplicates`,
+`--duplicates-to-trash`, `--exclude <regex>` (repeatable), `--rename <template>`,
+`--json` for machine-readable output. Settings come from sensible defaults or a
+JSON file via `--config`:
+
+```json
+{
+  "categories": { "Books": [".epub", ".mobi"], "Others": [] },
+  "auto_rules": [
+    { "name": "Invoice", "category": "Finance",
+      "name_pattern": "^invoice", "enabled": true }
+  ],
+  "exclude_patterns": ["\\.tmp$"]
+}
+```
 
 ---
 

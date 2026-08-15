@@ -3,6 +3,9 @@ description: "Sort files into folders by type, size, or date on any device."
 publish_to: 'none'
 version: 2.1.0+2
 
+executables:
+  mise: bin/mise.dart
+
 environment:
   sdk: ^3.11.5
 
