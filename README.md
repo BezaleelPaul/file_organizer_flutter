@@ -28,7 +28,8 @@
   <a href="#-command-line-interface-cli">CLI</a> &bull;
   <a href="#-search-syntax-cheat-sheet">Query Syntax</a> &bull;
   <a href="#-comparison">Comparison</a> &bull;
-  <a href="#-development--building">Build</a>
+  <a href="#-development--building">Build</a> &bull;
+  <a href="#-share--spread-the-word">Share</a>
 </p>
 
 ---
@@ -273,6 +274,70 @@ flutter build macos --release
 flutter build apk --release
 flutter build appbundle --release
 ```
+
+---
+
+## 📢 Share & Spread the Word
+
+Love Mise or building in public? Help the project grow and share it with your network:
+
+<details>
+<summary>📋 <strong>Copy Ready-to-Post LinkedIn Template (Engineering & Systems Architecture Focus)</strong></summary>
+
+<br>
+
+```text
+Why most file organizers crash on large files — and how I built an OOM-proof architecture. 🚀
+
+If you've ever written `await file.readAsBytes()` in Dart, you've introduced a silent memory bomb into your app. Load three 4GB 4K videos simultaneously, and your app will instantly crash with an Out-of-Memory (OOM) exception.
+
+When designing Mise — an open-source, local-first file organizer and disk intelligence workstation — I engineered a 3-stage cascade pipeline to make scanning 50GB+ libraries effortless on a bounded memory footprint:
+
+🔹 Stage 1 (O(1)): Size Matching — eliminates ~85% of non-duplicates in microseconds before doing any I/O.
+🔹 Stage 2 (O(8KB)): Signature Slicing — only compares head & tail binary blocks.
+🔹 Stage 3 (Bounded Memory Stream): Full SHA-256 digests stream `file.openRead()` in 64KB chunks directly into the crypto digest. Memory consumption stays flat regardless of file size.
+🔹 Zero-Jank Traversal: Recursive directory walking is offloaded to background Dart Isolates, keeping the UI pinned at 60/120 FPS.
+🔹 Selective Rollback: Transactions are recorded in OS Application Support directories (%APPDATA%, ~/Library), allowing users to undo individual file movements rather than reverting an entire batch.
+
+The project is 100% offline, privacy-first, and features native builds across Windows, macOS, Linux, Android, and a headless CLI.
+
+Check out the code, architecture docs, and v2.2.0 release on GitHub:
+👉 https://github.com/BezaleelPaul/file_organizer_flutter
+
+#Flutter #Dart #OpenSource #SoftwareEngineering #SystemDesign #CrossPlatform #DesktopApps #CleanArchitecture
+```
+
+</details>
+
+<details>
+<summary>📋 <strong>Copy Ready-to-Post LinkedIn Template (Product & Builder Focus)</strong></summary>
+
+<br>
+
+```text
+I got tired of messy Downloads folders and $42 single-platform utilities. So I built an open-source alternative that runs everywhere. 💻
+
+Meet Mise (/miːz/) — named after the culinary philosophy "mise en place" ("everything in its place").
+
+Most file organizers force you to choose between paying $40+ for single-platform tools, using risky scripts with no undo safety net, or uploading personal file metadata to the cloud.
+
+Mise is built different:
+✅ 100% Offline & Private (Zero cloud calls, zero telemetry)
+✅ Safety-Guaranteed (Interactive Plan Preview + per-file selective rollback)
+✅ Cross-Platform Native (Windows, macOS, Linux, Android, and a headless CLI)
+✅ High Performance (Streamed 3-stage duplicate finder + reclaimable space treemap)
+
+Completely open source under the MIT license with 94 automated tests.
+
+Check out the repository and grab the v2.2.0 installer:
+👉 https://github.com/BezaleelPaul/file_organizer_flutter
+
+If you find it useful, leave a ⭐️ on GitHub!
+
+#OpenSource #FlutterDev #Productivity #DeveloperCommunity #BuildInPublic #Coding
+```
+
+</details>
 
 ---
 
