@@ -4,6 +4,7 @@
 library;
 
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:crypto/crypto.dart';
 import 'package:file_organizer/core/models.dart';
@@ -52,8 +53,94 @@ class DuplicateGroup {
   int get reclaimable => size * (files.length - 1);
 }
 
+class _ScanWorkerParams {
+  const _ScanWorkerParams({required this.root, required this.sendPort});
+  final String root;
+  final SendPort sendPort;
+}
+
+void _scanWorkerEntryPoint(_ScanWorkerParams params) async {
+  final files = <DiskItem>[];
+  final dirs = <DiskItem>[];
+  var count = 0;
+  var lastReported = 0;
+
+  Future<void> walk(String dir) async {
+    try {
+      await for (final entity in Directory(dir).list(followLinks: false)) {
+        final name = p.basename(entity.path);
+        if (name.startsWith('.')) continue;
+        if (name == 'undo_history.json') continue;
+        try {
+          if (entity is File) {
+            final stat = entity.statSync();
+            files.add(DiskItem(
+              path: entity.path,
+              name: name,
+              size: stat.size,
+              modified: stat.modified,
+              isDirectory: false,
+            ));
+            count += 1;
+            if (count - lastReported >= 50) {
+              lastReported = count;
+              params.sendPort.send(count);
+            }
+          } else if (entity is Directory) {
+            dirs.add(DiskItem(
+              path: entity.path,
+              name: name,
+              size: 0,
+              modified: entity.statSync().modified,
+              isDirectory: true,
+            ));
+            await walk(entity.path);
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  try {
+    await walk(params.root);
+    params.sendPort.send(count);
+    params.sendPort.send(DiskScan(root: params.root, files: files, dirs: dirs));
+  } catch (_) {
+    params.sendPort.send(DiskScan(root: params.root, files: files, dirs: dirs));
+  }
+}
+
 /// Recursively walk [root] collecting every file and directory.
+///
+/// Runs on a background isolate so the UI thread remains at 60/120fps during large scans.
 Future<DiskScan> scanTree(
+  String root, {
+  void Function(int files)? onProgress,
+}) async {
+  final receivePort = ReceivePort();
+  try {
+    final isolate = await Isolate.spawn(
+      _scanWorkerEntryPoint,
+      _ScanWorkerParams(root: root, sendPort: receivePort.sendPort),
+    );
+
+    await for (final msg in receivePort) {
+      if (msg is int) {
+        onProgress?.call(msg);
+      } else if (msg is DiskScan) {
+        isolate.kill();
+        receivePort.close();
+        return msg;
+      }
+    }
+  } catch (_) {
+    receivePort.close();
+    return _walkInCurrentIsolate(root, onProgress: onProgress);
+  }
+  return DiskScan(root: root, files: const [], dirs: const []);
+}
+
+Future<DiskScan> _walkInCurrentIsolate(
   String root, {
   void Function(int files)? onProgress,
 }) async {
@@ -89,50 +176,99 @@ Future<DiskScan> scanTree(
             ));
             await walk(entity.path);
           }
-        } catch (_) {
-          // Skip files that are locked or disappear mid-scan.
-        }
+        } catch (_) {}
       }
-    } catch (_) {
-      // Skip folders we cannot read.
-    }
+    } catch (_) {}
   }
 
   await walk(root);
   return DiskScan(root: root, files: files, dirs: dirs);
 }
 
-/// Group byte-identical files by (size, sha256).
+/// Group byte-identical files by (size, quick signature, streamed sha256).
+///
+/// Uses a 3-stage cascade to avoid reading or hashing unnecessary bytes:
+/// 1. Group files by exact byte size.
+/// 2. For size-candidates, compare head (4KB) and tail (4KB) signatures.
+/// 3. Streamed full SHA-256 hash using chunked buffers (bounded RAM).
 Future<List<DuplicateGroup>> findDuplicates(
   DiskScan scan, {
   void Function(String message)? log,
 }) async {
+  // Stage 1: Filter by exact file size
   final bySize = <int, List<DiskItem>>{};
   for (final file in scan.files) {
+    if (file.size <= 0) continue; // Skip 0-byte files
     bySize.putIfAbsent(file.size, () => []).add(file);
   }
+
   final groups = <DuplicateGroup>[];
+
   for (final sameSize in bySize.values) {
     if (sameSize.length < 2) continue;
-    final byHash = <String, List<DiskItem>>{};
+
+    // Stage 2: Quick prefix + suffix signature check (4KB head + 4KB tail)
+    final bySignature = <String, List<DiskItem>>{};
     for (final file in sameSize) {
-      final hash = await _fileHash(file.path);
-      if (hash == null) continue;
-      byHash.putIfAbsent(hash, () => []).add(file);
+      final sig = await _quickSignature(file.path, file.size);
+      if (sig == null) continue;
+      bySignature.putIfAbsent(sig, () => []).add(file);
     }
-    for (final group in byHash.values) {
-      if (group.length >= 2) groups.add(DuplicateGroup(files: group));
+
+    // Stage 3: Streamed chunked SHA-256 (only for candidates matching size and signature)
+    for (final candidateGroup in bySignature.values) {
+      if (candidateGroup.length < 2) continue;
+
+      final byHash = <String, List<DiskItem>>{};
+      for (final file in candidateGroup) {
+        final hash = await _fileHashStreamed(file.path);
+        if (hash == null) continue;
+        byHash.putIfAbsent(hash, () => []).add(file);
+      }
+
+      for (final matchGroup in byHash.values) {
+        if (matchGroup.length >= 2) {
+          groups.add(DuplicateGroup(files: matchGroup));
+        }
+      }
     }
   }
+
   groups.sort((a, b) => b.reclaimable.compareTo(a.reclaimable));
   return groups;
 }
 
-Future<String?> _fileHash(String path) async {
+/// Reads the first 4KB and last 4KB of a file to produce a fast fingerprint.
+Future<String?> _quickSignature(String path, int size) async {
   try {
     final file = File(path);
     if (!await file.exists()) return null;
-    return sha256.convert(await file.readAsBytes()).toString();
+    final raf = await file.open();
+    try {
+      const sampleSize = 4096;
+      final head = await raf.read(sampleSize);
+      List<int> tail = const [];
+      if (size > sampleSize * 2) {
+        await raf.setPosition(size - sampleSize);
+        tail = await raf.read(sampleSize);
+      }
+      final combined = [...head, ...tail];
+      return sha256.convert(combined).toString();
+    } finally {
+      await raf.close();
+    }
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Streamed full-file SHA-256 calculation. Never loads the whole file into RAM.
+Future<String?> _fileHashStreamed(String path) async {
+  try {
+    final file = File(path);
+    if (!await file.exists()) return null;
+    final digest = await sha256.bind(file.openRead()).first;
+    return digest.toString();
   } catch (_) {
     return null;
   }

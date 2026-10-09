@@ -61,10 +61,26 @@ class _HistoryCard extends StatelessWidget {
           title: Text(
               '${entry.count} files ${entry.action == 'copy' ? 'copied' : entry.action == 'trash' ? 'trashed' : 'moved'}'),
         subtitle: Text(_shortRoot(entry.root), overflow: TextOverflow.ellipsis),
-        trailing: TextButton(
-          onPressed: () => _confirmUndo(context),
-          child: const Text('Undo'),
-        ),
+        trailing: entry.isRolledBack
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Undone',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              )
+            : TextButton(
+                onPressed: () => _confirmUndo(context),
+                child: const Text('Undo'),
+              ),
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -77,7 +93,7 @@ class _HistoryCard extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const Icon(Icons.arrow_forward, size: 14),
                         const SizedBox(width: 8),
@@ -89,6 +105,13 @@ class _HistoryCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (!entry.isRolledBack)
+                          IconButton(
+                            icon: const Icon(Icons.replay, size: 16),
+                            tooltip: 'Revert this file only',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => state.undoSelected(entry, [move]),
+                          ),
                       ],
                     ),
                   ),

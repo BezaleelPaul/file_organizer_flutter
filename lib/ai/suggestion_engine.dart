@@ -39,9 +39,6 @@ class SuggestionEngine {
   final StorageService storage;
   final CategoryMap categories;
 
-  /// Don't read content for more than this many files per scan.
-  static const int maxFiles = 250;
-
   static const Map<String, List<String>> _keywords = {
     'Documents': [
       'invoice', 'receipt', 'report', 'resume', 'cv', 'cover', 'letter',
@@ -49,33 +46,46 @@ class SuggestionEngine {
       'essay', 'paper', 'article', 'manual', 'guide', 'notes', 'tender',
       'purchase', 'order', 'quotation', 'warranty', 'insurance', 'claim',
       'statement', 'ledger', 'tax', 'payroll', 'prescription', 'recipe',
-      'syllabus', 'transcript',
+      'syllabus', 'transcript', 'factura', 'rechnung', 'quittung', 'recibo',
+      'konto', 'brief', 'contrat', 'vertrag', 'bulletin', 'attestation',
+      'certificado', 'diploma', 'presentation', 'slide', 'sheet',
+      'spreadsheet', 'form', 'survey', 'specification', 'dossier',
     ],
     'Images': [
       'photo', 'photograph', 'pic', 'image', 'img', 'picture', 'screenshot',
       'selfie', 'wallpaper', 'render', 'logo', 'icon', 'banner', 'poster',
-      'drawing', 'sketch', 'art', 'album', 'portrait', 'scan',
+      'drawing', 'sketch', 'art', 'album', 'portrait', 'scan', 'captura',
+      'schermata', 'bild', 'foto', 'snapshot', 'avatar', 'profile',
+      'thumbnail', 'thumb', 'cover', 'preview', 'graphic', 'texture', 'diagram',
     ],
     'Videos': [
       'video', 'movie', 'film', 'clip', 'trailer', 'episode', 'season',
       'recording', 'webcam', 'cam', 'animation', 'footage', '1080p', '4k',
-      's01', 'e01', 'ep1',
+      's01', 'e01', 'ep1', 'screencast', 'webinar', 'stream', 'screenrecording',
+      'vlog', 'reel', 'tiktok',
     ],
     'Music': [
       'song', 'track', 'remix', 'instrumental', 'music', 'audio', 'ep', 'mix',
-      'dj', 'podcast', 'karaoke', 'cover_song',
+      'dj', 'podcast', 'karaoke', 'cover_song', 'soundtrack', 'beat',
     ],
     'Archives': [
-      'backup', 'archive', 'pack', 'bundle', 'snapshot', 'dump',
+      'backup', 'archive', 'pack', 'bundle', 'snapshot', 'dump', 'tarball',
+      'compressed', 'zipfile', 'release_bundle',
     ],
     'Programs': [
-      'setup', 'installer', 'install', 'patch', 'update', 'portable',
+      'setup', 'installer', 'install', 'patch', 'update', 'portable', 'binary',
     ],
-    'Scripts': ['automation', 'bot', 'deploy', 'crawl', 'scrape'],
-    'Code': ['source', 'module', 'package', 'benchmark', 'test'],
-    'Fonts': ['font', 'glyph'],
-    'CAD': ['blueprint', 'schematic', 'assembly', 'part'],
-    'Data': ['database', 'dataset', 'export', 'timeseries'],
+    'Scripts': [
+      'automation', 'bot', 'deploy', 'crawl', 'scrape', 'build', 'compile',
+      'bundle', 'lint', 'migrate', 'seed',
+    ],
+    'Code': [
+      'source', 'module', 'package', 'benchmark', 'test', 'controller',
+      'service', 'model', 'repository', 'component', 'interface', 'schema',
+    ],
+    'Fonts': ['font', 'glyph', 'typeface'],
+    'CAD': ['blueprint', 'schematic', 'assembly', 'part', 'model3d'],
+    'Data': ['database', 'dataset', 'export', 'timeseries', 'dump_db', 'records'],
   };
 
   /// Signature prefixes (as bytes) → category. Only the first 16 bytes of a
@@ -85,28 +95,63 @@ class SuggestionEngine {
     ('Images', [0x89, 0x50, 0x4E, 0x47]), // PNG
     ('Images', [0xFF, 0xD8, 0xFF]), // JPEG
     ('Images', [0x47, 0x49, 0x46, 0x38]), // GIF8
+    ('Images', [0x42, 0x4D]), // BMP
+    ('Images', [0x49, 0x49, 0x2A, 0x00]), // TIFF (Little-endian)
+    ('Images', [0x4D, 0x4D, 0x00, 0x2A]), // TIFF (Big-endian)
     ('Archives', [0x50, 0x4B, 0x03, 0x04]), // ZIP
     ('Archives', [0x1F, 0x8B]), // gzip
     ('Archives', [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C]), // 7z
+    ('Archives', [0x52, 0x61, 0x72, 0x21]), // RAR
     ('Music', [0x49, 0x44, 0x33]), // ID3 (MP3)
     ('Music', [0x4F, 0x67, 0x67, 0x53]), // OggS
-    ('Videos', [0x1A, 0x45, 0xDF, 0xA3]), // Matroska
+    ('Music', [0x66, 0x4C, 0x61, 0x43]), // FLAC
+    ('Videos', [0x1A, 0x45, 0xDF, 0xA3]), // Matroska / WebM
     ('Programs', [0x7F, 0x45, 0x4C, 0x46]), // ELF
     ('Programs', [0x4D, 0x5A]), // MZ (PE/DOS)
+    ('Fonts', [0x77, 0x4F, 0x46, 0x46]), // WOFF
+    ('Fonts', [0x77, 0x4F, 0x46, 0x32]), // WOFF2
+    ('Data', [0x53, 0x51, 0x4C, 0x69, 0x74, 0x65]), // SQLite format 3
   ];
 
-  /// Propose category overrides for a scan, capped at [maxFiles] files.
-  Future<List<Suggestion>> suggestAll(ScanResult scan) async {
+  /// Propose category overrides for a scan without arbitrary file count caps.
+  Future<List<Suggestion>> suggestAll(
+    ScanResult scan, {
+    int? maxFiles,
+  }) async {
     final out = <Suggestion>[];
     var considered = 0;
     for (final file in scan.files) {
       if (file.skipped) continue;
-      if (considered >= maxFiles) break;
+      if (maxFiles != null && considered >= maxFiles) break;
       considered += 1;
       final suggestion = await suggestFor(file, scan.root);
       if (suggestion != null) out.add(suggestion);
     }
     return out;
+  }
+
+  /// Stream suggestions progressively as they are analyzed.
+  Stream<Suggestion> suggestStream(ScanResult scan) async* {
+    for (final file in scan.files) {
+      if (file.skipped) continue;
+      final suggestion = await suggestFor(file, scan.root);
+      if (suggestion != null) yield suggestion;
+    }
+  }
+
+  static final Map<String, String> _userLearnedTokens = {};
+
+  /// Learn from user manual corrections in the plan preview.
+  static void learnFromCorrection(String fileName, String targetCategory) {
+    final dot = fileName.lastIndexOf('.');
+    final stem = dot > 0 ? fileName.substring(0, dot) : fileName;
+    final tokens = stem
+        .toLowerCase()
+        .split(RegExp('[^a-z0-9]+'))
+        .where((t) => t.length >= 3);
+    for (final token in tokens) {
+      _userLearnedTokens[token] = targetCategory;
+    }
   }
 
   /// Propose an override for a single planned file, or null when the current
@@ -123,6 +168,14 @@ class SuggestionEngine {
     final extCategory = _categoryForExtension(ext);
     if (extCategory != null && extCategory != 'Others') {
       add(extCategory, 0.4, '$ext files');
+    }
+
+    // Adaptive user learned weights
+    for (final token in _tokens(file.name)) {
+      final learned = _userLearnedTokens[token];
+      if (learned != null) {
+        add(learned, 1.8, "learned from '$token'");
+      }
     }
 
     for (final token in _tokens(file.name)) {

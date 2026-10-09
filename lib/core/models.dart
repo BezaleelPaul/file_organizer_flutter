@@ -276,6 +276,7 @@ class HistoryEntry {
     required this.root,
     required this.createdDirs,
     required this.moves,
+    this.status = 'completed',
   });
 
   final String timestamp;
@@ -286,12 +287,26 @@ class HistoryEntry {
   final List<String> createdDirs;
   final List<MoveRecord> moves;
 
+  /// `completed` or `rolled_back`.
+  final String status;
+
   int get count => moves.length;
+  bool get isRolledBack => status == 'rolled_back';
+
+  HistoryEntry copyWith({String? status}) => HistoryEntry(
+        timestamp: timestamp,
+        action: action,
+        root: root,
+        createdDirs: createdDirs,
+        moves: moves,
+        status: status ?? this.status,
+      );
 
   Map<String, dynamic> toJson() => {
         'timestamp': timestamp,
         'action': action,
         'root': root,
+        'status': status,
         'created_dirs': createdDirs,
         'entries': moves.map((m) => m.toJson()).toList(),
       };
@@ -300,6 +315,7 @@ class HistoryEntry {
         timestamp: json['timestamp'] as String,
         action: json['action'] as String,
         root: json['root'] as String,
+        status: json['status'] as String? ?? 'completed',
         createdDirs: (json['created_dirs'] as List<dynamic>? ?? [])
             .map((e) => e.toString())
             .toList(),

@@ -3,6 +3,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:file_organizer/core/history_store.dart';
 import 'package:file_organizer/core/models.dart';
 import 'package:file_organizer/core/rules.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -83,24 +84,37 @@ class SettingsStore {
     return prefs.getString(_keyLastRoot);
   }
 
+  final HistoryStore _historyStore = HistoryStore();
+
   Future<List<HistoryEntry>> loadHistory() async {
+    final list = await _historyStore.loadHistory();
+    if (list.isNotEmpty) return list;
+
+    // Migrate from legacy shared_preferences if present
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_keyHistory);
     if (raw == null) return [];
     try {
       final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded
+      final migrated = decoded
           .map((e) => HistoryEntry.fromJson(e as Map<String, dynamic>))
           .toList();
+      if (migrated.isNotEmpty) {
+        await _historyStore.saveHistory(migrated);
+        await prefs.remove(_keyHistory);
+      }
+      return migrated;
     } catch (_) {
       return [];
     }
   }
 
   Future<void> saveHistory(List<HistoryEntry> history) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-        _keyHistory, jsonEncode(history.map((e) => e.toJson()).toList()));
+    await _historyStore.saveHistory(history);
+  }
+
+  Future<void> markHistoryRolledBack(HistoryEntry entry) async {
+    await _historyStore.markRolledBack(entry);
   }
 
   Future<List<WatchJob>> loadWatches() async {

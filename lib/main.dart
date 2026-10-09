@@ -1,5 +1,6 @@
 import 'package:file_organizer/screens/home_shell.dart';
 import 'package:file_organizer/services/desktop_service.dart';
+import 'package:file_organizer/state/app_scope.dart';
 import 'package:file_organizer/state/app_state.dart';
 import 'package:file_organizer/state/settings_store.dart';
 import 'package:file_organizer/theme.dart';
@@ -45,10 +46,12 @@ class FileOrganizerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: state,
-      builder: (context, _) {
-        return MaterialApp(
+    return AppScope(
+      state: state,
+      child: ListenableBuilder(
+        listenable: state,
+        builder: (context, _) {
+          return MaterialApp(
           title: 'Mise',
           debugShowCheckedModeBanner: false,
           theme: buildTheme(Brightness.light),
@@ -73,6 +76,7 @@ class FileOrganizerApp extends StatelessWidget {
           ),
         );
       },
+    ),
     );
   }
 }

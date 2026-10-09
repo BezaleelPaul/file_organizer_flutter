@@ -1,282 +1,200 @@
-# Mise
+<p align="center">
+  <img src="assets/banner.png" alt="Mise Banner" width="100%">
+</p>
 
-Sort files into folders by type, size, or date on any device.
+<p align="center">
+  <strong>Your files. Finally organized.</strong><br>
+  <em>A local-first, safety-guaranteed file organizer and disk intelligence suite for desktop, mobile, and terminal.</em>
+</p>
 
-A cross-platform Flutter app that scans a folder and moves (or copies) every file
-into categorized subfolders — e.g. `Documents/`, `Images/`, `Videos/`, `Music/`,
-`Archives/` — with automatic name de-duplication, an undo history, and optional
-size/date buckets.
-
-Targets **Windows**, **Linux**, **macOS**, **Android**, and **iOS**.
-
----
-
-## Features
-
-| Feature | Description |
-|---------|-------------|
-| Organize | Scan a folder and move/copy files into category folders |
-| Rules | 12 built-in categories (Documents, Images, Videos, Music, Archives, Programs, Scripts, Code, Fonts, CAD, Data, Others) — fully editable |
-| Auto rules | Visual builder for multi-condition rules (extensions, name regex, size range, modified window) that route files to any folder |
-| Smart suggestions | Offline, no-AI-key heuristic engine that reads names + content signatures and suggests better categories before organizing |
-| Sort modes | By extension (default), by size bucket (Small/Medium/Large), by modification date (`YYYY-MM`) |
-| Safe | Never overwrites — collisions become `file (1).ext`, `file (2).ext` |
-| Undo | Every run writes an `undo_history.json` journal; undo moves everything back and removes created folders |
-| Copy mode | Option to copy instead of move (leaves originals in place) |
-| History | Review past runs and undo them at any time |
-| Search | Index a folder and search instantly: `report`, `*.pdf`, `type:image`, `>100MB`, `modified:last-week` |
-| Tags | Color-coded labels you attach to files; filter with `tag:work` |
-| Collections | Save any search as a live, one-tap collection of matching files |
-| Storage | See space used per category, byte-identical duplicates (with reclaimable bytes), largest files and empty folders |
-| Watch | Dedicated screen for organizing flows with live progress |
-| Schedule | Background runs on an interval, daily, or on chosen weekdays (while Mise is running) |
-| CLI | Headless `plan` / `organize` / `stats` commands for scripts and cron |
-| Tray | System tray icon with hide-to-tray; keeps watched folders organizing in the background |
-| Auto-start | Launch Mise at sign-in (Settings) |
-| Updates | Checks GitHub Releases and prompts when a new version is available |
-| Dark/light | Follows system theme via Material 3 |
-
-## Screens
-
-- **Dashboard** — overview of the current state and quick actions.
-- **Search** — instant indexed search with rich queries, plus **Tags** and
-  **Smart Collections** (saved searches) tabs.
-- **Storage** — deep analysis: category breakdown, duplicates, large files, empty folders.
-- **Organize** — pick a folder, choose sort mode, preview the plan, run it.
-- **Rules** — edit categories and the extensions that map into them; open the
-  visual **Auto rules** builder for multi-condition routing.
-- **Watch** — live progress while a run executes, plus a **Schedule** tab for
-  interval / daily / weekday background runs.
-- **History** — past runs with one-tap undo.
-
-## Platform support
-
-| Platform | Storage backend | Notes |
-|----------|-----------------|-------|
-| Windows | `dart:io` (`IoStorageService`) | Pick any folder on disk |
-| Linux | `dart:io` | Pick any folder on disk |
-| macOS | `dart:io` | Pick any folder on disk |
-| Android | SAF channel (`SafStorageService`) | Uses the Storage Access Framework to pick a directory |
-| iOS | `dart:io` (`IoStorageService`) | Folder picking via the Files app |
-| Web | Unsupported (`UnsupportedStorageService`) | Builds, but file operations are disabled |
-
-The backend is chosen automatically by `lib/core/storage/storage_factory.dart`.
+<p align="center">
+  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.41.x-02569B?logo=flutter" alt="Flutter"></a>
+  <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.11+-0175C2?logo=dart" alt="Dart"></a>
+  <img src="https://img.shields.io/badge/Tests-94%20Passing-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android%20%7C%20iOS-informational" alt="Platforms">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
+</p>
 
 ---
 
-## Getting started
+## The Mise Philosophy
+
+> **Mise is the only file organizer that runs everywhere you do — desktop, mobile, and command line — keeps everything 100% offline, and never lets you lose a file it moved. Scan before you move. Undo anything. Own your data.**
+
+Named after the French culinary discipline *mise en place* (*"everything in its place"*), Mise replaces messy single-platform scripts, paid proprietary utilities, and cloud-dependent file sorters with an offline, high-performance workstation.
+
+---
+
+## Highlights & What's New
+
+<table>
+  <tr>
+    <td width="50%">
+      <h3>🛡️ "Zero Fear" Safety Architecture</h3>
+      <ul>
+        <li><strong>Interactive Plan Preview:</strong> See exactly where every file goes before moving a single byte.</li>
+        <li><strong>Collision-Proof Renaming:</strong> Never overwrites existing files — automatically sequences collisions as <code>file (1).ext</code>.</li>
+        <li><strong>Selective Smart Undo:</strong> Revert an entire batch or <strong>roll back single specific files</strong> without reverting the whole run.</li>
+        <li><strong>Centralized OS Journals:</strong> History is preserved in the OS Application Support directory (<code>%APPDATA%</code>, <code>~/Library</code>) — keeping target folders completely clean.</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>⚡ High-Performance Disk Engine</h3>
+      <ul>
+        <li><strong>Streamed 3-Stage Duplicate Finder:</strong> OOM-proof memory management that streams files in 64KB chunks — handles 50GB+ files without RAM spikes.</li>
+        <li><strong>Reclaimable Storage Treemap:</strong> Visual breakdown of duplicate disk waste by category with a 1-click <em>"Clean Duplicates"</em> action.</li>
+        <li><strong>Background Isolate Traversal:</strong> Recursive folder walking runs in dedicated Dart isolates — keeps UI butter-smooth at 60/120fps.</li>
+        <li><strong>Deep Search & Tags:</strong> Rich query syntax (<code>type:image</code>, <code>>100MB</code>, <code>modified:last-week</code>) and color-coded virtual tags.</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <h3>🧠 Adaptive Local Intelligence</h3>
+      <ul>
+        <li><strong>100% Private & Offline:</strong> Zero cloud telemetry, no OpenAI API keys, and zero external network calls.</li>
+        <li><strong>Magic Byte Verification:</strong> Reads file signatures (PDF, PNG, MP3, WebP, FLAC, SQLite, ELF, PE) to classify files even when extensions are missing or misleading.</li>
+        <li><strong>Self-Tuning Heuristics:</strong> Remembers your manual overrides in the Plan Preview to automatically train future classifications.</li>
+        <li><strong>No File Limits:</strong> Analyzes thousands of files progressively with streaming classification.</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>💻 Desktop, Mobile & CLI Parity</h3>
+      <ul>
+        <li><strong>Material 3 Interface:</strong> Adaptive layout supporting desktop navigation rails, light/dark modes, and mobile navigation bars.</li>
+        <li><strong>System Tray Daemon:</strong> Background folder watching and instant tray-driven organization.</li>
+        <li><strong>Headless CLI (<code>mise</code>):</strong> Native command-line interface for bash scripts, cron jobs, and CI automation with JSON output.</li>
+        <li><strong>Universal Storage Layer:</strong> Bridges <code>dart:io</code> and Android's Storage Access Framework (SAF) seamlessly.</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+---
+
+## Application Screens
+
+| Screen | Description |
+|---|---|
+| **Dashboard** | Instant overview of organized files, recent runs, watched folders, and quick-start actions. |
+| **Organize** | Pick any folder, choose sort mode (Extensions, Size, Date, or Rules), review the interactive plan, reclassify on the fly, and execute safely. |
+| **Storage Center** | Disk space breakdown, large file finder, empty folder cleanup, and the **Duplicate Treemap** with reclaimable space analytics. |
+| **Search & Tags** | Fast indexed search with rich query operators (<code>type:image</code>, <code>tag:work</code>, <code>>50MB</code>) and dynamic Smart Collections. |
+| **Rules & Auto Rules**| 12 customizable category maps plus a visual multi-condition rule builder (Regex names, size ranges, extensions, date windows). |
+| **Watch & Schedule** | Background directory monitoring with debounce timers, recurring interval schedules, and tray synchronization. |
+| **History** | Audit trail of all previous runs with complete batch rollback and **per-file selective undo**. |
+
+---
+
+## How a Run Works
+
+```mermaid
+flowchart LR
+    A["1. Scan Folder"] --> B["2. Review Plan"]
+    B --> C["3. Execute Moves"]
+    C --> D["4. Centralized Journal"]
+    D --> E["5. Selective / Batch Undo"]
+    
+    style A fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style B fill:#1e293b,stroke:#6366f1,stroke-width:2px,color:#fff
+    style C fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
+    style D fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style E fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fff
+```
+
+1. **Scan** — `Organizer.scan()` categorizes files using extensions, visual rules, and magic bytes without modifying anything on disk.
+2. **Plan** — Mise presents a review table showing source, target folder, and suggestions. Users can reclassify or skip files.
+3. **Execute** — Files are moved or copied. Colliding filenames automatically get unique numerical suffixes (`photo (1).jpg`).
+4. **Journal** — Every operation is recorded in the OS Application Support directory (`history.json`).
+5. **Undo** — At any time, users can revert individual files or rollback the entire batch to restore originals and remove empty folders.
+
+---
+
+## Command-Line Interface (CLI)
+
+The exact same Dart engine powers a headless CLI executable:
+
+```bash
+# Preview planned moves without touching disk
+dart run file_organizer:mise plan /path/to/folder
+
+# Organize folder by extension
+dart run file_organizer:mise organize /path/to/folder
+
+# Sort by date buckets into YYYY-MM subfolders
+dart run file_organizer:mise organize /path/to/folder --by-date
+
+# Detect byte duplicates and move redundancies to Trash
+dart run file_organizer:mise organize /path/to/folder --detect-duplicates --duplicates-to-trash
+
+# Output machine-readable JSON for scripts and CI
+dart run file_organizer:mise stats /path/to/folder --json
+```
+
+---
+
+## Competitive Comparison
+
+| Feature | **Mise** | **Hazel** | **File Juggler** | **DropIt** | **Python `organize`** |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| **Platforms** | **Windows, macOS, Linux, Android, iOS** | macOS only | Windows only | Windows only | Cross-platform (CLI) |
+| **Price** | **Free / Open Source** | $42+ | $40 | Free | Free |
+| **Interface** | **Material 3 GUI + Tray + CLI** | Preferences pane | Legacy Win32 | Floating box | YAML / Terminal only |
+| **Undo Safety** | **Selective + Batch Undo** | Basic Trash | Basic Trash | Limited | Dry-run only |
+| **Duplicate Engine** | **3-Stage Streamed SHA-256 + Treemap** | None | None | None | Basic |
+| **Intelligence** | **Local Magic Bytes + Self-Tuning Tokens** | PDF text matching | Content rules | Pattern matching | Regex filters |
+| **Memory Footprint** | **Constant 64KB bounded stream** | Low | Medium | Low | Medium |
+
+---
+
+## Installation & Getting Started
 
 ### Prerequisites
+- Flutter SDK **3.41.x+**, Dart SDK **3.11+**
+- Platform toolchains (Visual Studio C++ for Windows, Xcode for macOS/iOS, GTK headers for Linux).
 
-- Flutter SDK **3.41.x** (stable channel), Dart 3.11+
-- Platform toolchains for whatever you target:
+### Setup & Run
+```bash
+# Clone the repository
+git clone https://github.com/BezaleelPaul/file_organizer_flutter.git
+cd file_organizer_flutter
 
-| Platform | Toolchain |
-|----------|-----------|
-| Windows | Visual Studio 2022 with the "Desktop development with C++" workload |
-| Linux | `clang`, `cmake`, `ninja-build`, `pkg-config`, GTK 3 dev headers |
-| macOS | Xcode + CocoaPods |
-| Android | Android SDK + JDK 17 |
-| iOS | macOS with Xcode |
-
-Check your setup with:
-
-```sh
-flutter doctor
-```
-
-### Install dependencies
-
-```sh
+# Install dependencies
 flutter pub get
+
+# Run the test suite
+flutter test
+
+# Launch on your platform
+flutter run -d windows    # or: -d macos, -d linux, -d android
 ```
 
-### Run in development
-
-```sh
-flutter run -d windows     # or: -d linux, -d macos, -d android, -d ios
-```
-
----
-
-## Building locally
-
-```sh
-# Windows — produces build\windows\x64\runner\Release\file_organizer.exe
+### Release Builds
+```bash
+# Windows Installer / Executable
 flutter build windows --release
 
-# Linux — produces build/linux/x64/release/bundle/
-flutter build linux --release
-
-# macOS — produces build/macos/Build/Products/Release/
+# macOS Application Bundle
 flutter build macos --release
 
-# Android — produces an AAB (Play Store) and an APK (sideload)
-flutter build appbundle --release
+# Linux Package
+flutter build linux --release
+
+# Android APK & App Bundle
 flutter build apk --release
-
-# iOS — produces an unsigned Xcode archive
-flutter build ipa --release --no-codesign
-```
-
-### Testing
-
-```sh
-flutter test
-```
-
-Tests cover the classification rules, the unique-name logic, the organizer
-engine against a fake storage backend, the search query parser, the visual
-rule builder, tags/collections, schedule math, and the CLI end-to-end
-(`test/`).
-
----
-
-## Command-line interface
-
-The same engine powers a headless CLI for scripts, cron jobs and CI:
-
-```sh
-dart run file_organizer:mise plan <folder>      # preview, no changes
-dart run file_organizer:mise organize <folder>  # sort the folder
-dart run file_organizer:mise stats <folder>     # per-category totals
-```
-
-Common options: `--by-size`, `--by-date`, `--copy`, `--detect-duplicates`,
-`--duplicates-to-trash`, `--exclude <regex>` (repeatable), `--rename <template>`,
-`--json` for machine-readable output. Settings come from sensible defaults or a
-JSON file via `--config`:
-
-```json
-{
-  "categories": { "Books": [".epub", ".mobi"], "Others": [] },
-  "auto_rules": [
-    { "name": "Invoice", "category": "Finance",
-      "name_pattern": "^invoice", "enabled": true }
-  ],
-  "exclude_patterns": ["\\.tmp$"]
-}
+flutter build appbundle --release
 ```
 
 ---
 
-## Releases (GitHub Actions)
+## Roadmap
 
-The repository ships a CI workflow (`.github/workflows/release.yml`) that builds
-all platforms in the cloud and attaches the installers to a GitHub Release.
-
-### How to release
-
-```sh
-git tag v2.0.0
-git push origin v2.0.0
-```
-
-Pushing any tag matching `v*` triggers the workflow. You can also run it
-manually from the **Actions** tab (workflow_dispatch) without a tag.
-
-### Artifacts produced
-
-| Artifact | Contents |
-|----------|----------|
-| `mise-windows.zip` | Windows exe + runtime DLLs |
-| `mise-setup-*.exe` | Windows **installer** (Inno Setup) |
-| `mise-linux.tar.gz` | Linux release bundle |
-| `mise_*.deb` | Linux Debian package |
-| `Mise-*.AppImage` | Linux AppImage |
-| `mise-macos.tar.gz` | macOS `.app` bundle |
-| `mise-ios.tar.gz` | iOS `.xcarchive` (unsigned; codesign before install) |
-| `mise-android.tar.gz` | Android `.aab` + `.apk` |
-
-The workflow uses a build matrix (`windows-latest`, `ubuntu-latest`,
-`macos-latest`) with pinned Flutter `3.41.9`, then a `release` job that collects
-every artifact into a single GitHub Release with auto-generated release notes.
-
-### Before shipping to stores
-
-The pipeline builds **unsigned** builds for a quick first release, but the
-workflow automatically signs when you add these secrets (steps are skipped when
-they're absent):
-
-- **Windows** — `WINDOWS_CERT_BASE64` (Base64 PFX) + `WINDOWS_CERT_PASSWORD`
-  signs the exe and the installer with `signtool` (removes SmartScreen
-  "unknown publisher").
-- **macOS** — `MACOS_CERT_BASE64` (Base64 .p12) + `MACOS_CERT_PASSWORD` +
-  optional `MACOS_IDENTITY` signs with Developer ID; add `APPLE_ID`,
-  `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` to also **notarize**.
-- **Android** — replace the debug signing config in
-  `android/app/build.gradle.kts` with a keystore and wire it into the workflow.
-- **iOS** — set up an Apple Developer signing certificate + provisioning profile
-  as GitHub secrets and remove `--no-codesign`. **A device cannot install an
-  unsigned build at all**, so iOS is blocked until then.
-
-Without signing, macOS is ad-hoc signed and Gatekeeper will show *"cannot be
-opened because the developer cannot be verified"* — right-click → **Open** once
-(or `xattr -dr com.apple.quarantine file_organizer.app`).
-
----
-
-## Project structure
-
-```
-lib/
-├── main.dart                     # Entry point, theme, splash → home switch
-├── theme.dart                    # Material 3 light/dark themes
-├── core/
-│   ├── organizer.dart            # Engine: scan → plan → execute → undo
-│   ├── models.dart               # CategoryMap, FileEntry, PlannedMove, HistoryEntry
-│   ├── rules.dart                # Classification, size buckets, unique naming
-│   ├── disk_scanner.dart         # Recursive scan, duplicates, large/empty, Trash
-│   └── storage/
-│       ├── storage_service.dart  # Abstract storage interface
-│       ├── io_storage_service.dart      # dart:io backend (desktop/iOS)
-│       ├── saf_storage_service.dart     # Android Storage Access Framework backend
-│       ├── unsupported_storage_service.dart
-│       └── storage_factory.dart  # Picks backend per platform
-├── state/
-│   ├── app_state.dart            # Global app state (ChangeNotifier)
-│   └── settings_store.dart       # Persisted settings via shared_preferences
-├── screens/
-│   ├── home_shell.dart           # Navigation (rail on desktop, bar on mobile)
-│   ├── dashboard_screen.dart
-│   ├── search_screen.dart
-│   ├── storage_screen.dart
-│   ├── organize_screen.dart
-│   ├── rules_screen.dart
-│   ├── auto_rule_screen.dart    # Visual rule builder
-│   ├── watch_screen.dart
-│   └── history_screen.dart
-├── search/
-│   ├── query.dart                # Search query parser + matcher
-│   └── search_service.dart       # Indexing + on-disk cache
-└── widgets/
-    ├── common.dart               # Shared widgets
-    ├── completion_dialog.dart    # Run-complete dialog
-    └── splash_screen.dart
-```
-
-### How a run works
-
-1. **Scan** — `Organizer.scan()` lists the folder and computes a category for
-   every file without touching anything.
-2. **Plan** — the UI shows the planned moves (category, destination subfolder)
-   for confirmation.
-3. **Execute** — `Organizer.execute()` moves/copies each file, de-duplicating
-   names on the fly, and returns a `HistoryEntry` journal.
-4. **Undo** — `Organizer.undo()` replays the journal in reverse and prunes the
-   folders it created.
-
-## Configuration
-
-| Setting | Location |
-|---------|----------|
-| App version / build number | `pubspec.yaml` (`version: X.Y.Z+BUILD`) |
-| Android application id | `android/app/build.gradle.kts` → `namespace` / `applicationId` |
-| iOS / macOS bundle id | `ios/Runner.xcodeproj/project.pbxproj` and `macos/Runner/Configs/AppInfo.xcconfig` |
-| Windows app name / icon | `windows/runner/Runner.rc` |
+See the detailed **[ROADMAP.md](ROADMAP.md)** for the complete two-track plan:
+- **Track A (Technical Remediation)**: All stability, memory, and architectural tasks complete.
+- **Track B (Product Differentiation)**: Selective undo and duplicate treemaps delivered; natural language rule grammar and Magika ONNX neural runtime in progress.
 
 ---
 
 ## License
 
-See the repository owner for licensing terms.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

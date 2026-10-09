@@ -101,9 +101,13 @@ class IoStorageService implements StorageService {
   @override
   Future<String?> fileHash(String directory, String name) async {
     final file = File(p.join(directory, name));
-    if (!file.existsSync()) return null;
-    final bytes = await file.readAsBytes();
-    return sha256.convert(bytes).toString();
+    if (!await file.exists()) return null;
+    try {
+      final digest = await sha256.bind(file.openRead()).first;
+      return digest.toString();
+    } catch (_) {
+      return null;
+    }
   }
 
   @override

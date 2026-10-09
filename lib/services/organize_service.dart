@@ -136,12 +136,20 @@ class OrganizeService {
   Future<void> undo(
     HistoryEntry entry, {
     void Function(String message)? log,
+  }) =>
+      undoSelected(entry, entry.moves, log: log);
+
+  /// Selectively reverse specific moves from a journal entry.
+  Future<void> undoSelected(
+    HistoryEntry entry,
+    List<MoveRecord> selectedMoves, {
+    void Function(String message)? log,
   }) async {
     final organizer = Organizer(
       storage: storage,
       root: entry.root,
       categories: const {},
     );
-    await organizer.undo(entry, log: log);
+    await organizer.undoSelected(entry, selectedMoves, log: log);
   }
 }

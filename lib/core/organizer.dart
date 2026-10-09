@@ -305,12 +305,20 @@ class Organizer {
     return storage.ensureDirectory(root, trashFolder);
   }
 
-  /// Reverse a [HistoryEntry]: move every file back and remove empty dirs.
+  /// Reverse an entire [HistoryEntry]: move every file back and remove empty dirs.
   Future<void> undo(
     HistoryEntry entry, {
     void Function(String message)? log,
+  }) =>
+      undoSelected(entry, entry.moves, log: log);
+
+  /// Selectively reverse only the specified [selectedMoves] from a [HistoryEntry].
+  Future<void> undoSelected(
+    HistoryEntry entry,
+    List<MoveRecord> selectedMoves, {
+    void Function(String message)? log,
   }) async {
-    for (final record in entry.moves.reversed) {
+    for (final record in selectedMoves.reversed) {
       log?.call('Undo ${record.destName}');
       await storage.moveFile(
         record.destDir,

@@ -15,7 +15,10 @@ import 'package:file_organizer/core/storage/storage_service.dart';
 import 'package:file_organizer/services/desktop_service.dart';
 import 'package:file_organizer/services/operation_queue.dart';
 import 'package:file_organizer/services/organize_service.dart';
+import 'package:file_organizer/state/organize_controller.dart';
+import 'package:file_organizer/state/search_controller.dart';
 import 'package:file_organizer/state/settings_store.dart';
+import 'package:file_organizer/state/storage_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:watcher/watcher.dart';
@@ -44,6 +47,10 @@ class AppState extends ChangeNotifier {
 
   final SettingsStore store;
   final StorageService storage = createStorageService();
+
+  late final StorageController storageController = StorageController(storage: storage);
+  late final SearchController searchController = SearchController(store: store);
+  late final OrganizeController organizeController = OrganizeController(storage: storage);
 
   bool get osWatchSupported => _osWatchSupported;
 
@@ -294,14 +301,70 @@ class AppState extends ChangeNotifier {
       addLog('Undoing ${entry.count} files…');
       try {
         await _organize.undo(entry, log: (m) => addLog(m));
-        history.removeWhere((h) => identical(h, entry) || h == entry);
+        final idx = history.indexWhere((h) =>
+            identical(h, entry) ||
+            (h.timestamp == entry.timestamp && h.root == entry.root));
+        if (idx >= 0) {
+          history[idx] = history[idx].copyWith(status: 'rolled_back');
+        } else {
+          history.removeWhere((h) => identical(h, entry) || h == entry);
+        }
         await store.saveHistory(history);
+        await store.markHistoryRolledBack(entry);
         status = 'Undone ${entry.count} files';
         addLog(status);
         completion = CompletionMessage(
           title: 'Changes undone',
           message: '${entry.count} files have been restored to their original '
               'folders.',
+        );
+        _setBusy(BusyKind.none);
+      } catch (e) {
+        error = e.toString();
+        addLog('ERROR: $e');
+        _setBusy(BusyKind.none);
+      }
+    });
+  }
+
+  /// Selectively undo only [selectedMoves] from a history entry.
+  Future<void> undoSelected(
+    HistoryEntry entry,
+    List<MoveRecord> selectedMoves,
+  ) async {
+    if (busy != BusyKind.none || selectedMoves.isEmpty) return;
+    if (selectedMoves.length >= entry.moves.length) {
+      await undo(entry);
+      return;
+    }
+    await _operations.run(() async {
+      _setBusy(BusyKind.undo);
+      addLog('Undoing ${selectedMoves.length} selected file(s)…');
+      try {
+        await _organize.undoSelected(entry, selectedMoves, log: (m) => addLog(m));
+        final idx = history.indexWhere((h) =>
+            identical(h, entry) ||
+            (h.timestamp == entry.timestamp && h.root == entry.root));
+        if (idx >= 0) {
+          final remainingMoves = entry.moves
+              .where((m) => !selectedMoves.contains(m))
+              .toList();
+          history[idx] = HistoryEntry(
+            timestamp: entry.timestamp,
+            action: entry.action,
+            root: entry.root,
+            createdDirs: entry.createdDirs,
+            moves: remainingMoves,
+            status: remainingMoves.isEmpty ? 'rolled_back' : entry.status,
+          );
+        }
+        await store.saveHistory(history);
+        status = 'Undone ${selectedMoves.length} file(s)';
+        addLog(status);
+        completion = CompletionMessage(
+          title: 'Selected changes undone',
+          message:
+              '${selectedMoves.length} file(s) restored to original location.',
         );
         _setBusy(BusyKind.none);
       } catch (e) {
@@ -325,6 +388,9 @@ class AppState extends ChangeNotifier {
     file.overrideCategory = (category == null || category == file.category)
         ? null
         : category;
+    if (category != null && category != file.category) {
+      SuggestionEngine.learnFromCorrection(file.name, category);
+    }
     notifyListeners();
   }
 

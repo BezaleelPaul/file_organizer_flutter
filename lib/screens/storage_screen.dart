@@ -427,19 +427,119 @@ class _DuplicatesTab extends StatelessWidget {
               ),
       );
     }
+    final wasteByCategory = <String, int>{};
+    for (final group in all) {
+      final ext = group.files.first.extension;
+      final cat = classifyFile(
+        extension: ext,
+        sizeBytes: group.size,
+        categories: normalizeCategories(defaultCategories),
+        byExtension: true,
+        bySize: false,
+      );
+      wasteByCategory[cat] = (wasteByCategory[cat] ?? 0) + group.reclaimable;
+    }
+    final sortedWaste = wasteByCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    void selectAllDuplicatesExceptFirst() {
+      for (final group in all) {
+        for (var i = 1; i < group.files.length; i++) {
+          if (!selected.contains(group.files[i].path)) {
+            onToggle(group.files[i].path);
+          }
+        }
+      }
+    }
+
     return Column(
       children: [
+        // Visual Reclaimable Space Treemap & Category Breakdown
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: scheme.tertiaryContainer.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: scheme.tertiary.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.pie_chart_outline, color: scheme.tertiary, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Reclaimable: ${formatBytes(reclaimable)} across ${all.length} duplicate groups',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: scheme.onTertiaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (reclaimable > 0) ...[
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: SizedBox(
+                    height: 8,
+                    child: Row(
+                      children: [
+                        for (final entry in sortedWaste)
+                          if (entry.value > 0)
+                            Expanded(
+                              flex: ((entry.value / reclaimable) * 100)
+                                  .round()
+                                  .clamp(1, 100),
+                              child: Container(
+                                color: _wasteColor(entry.key, scheme),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 0.5),
+                              ),
+                            ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    for (final entry in sortedWaste.take(4))
+                      if (entry.value > 0)
+                        Chip(
+                          visualDensity: VisualDensity.compact,
+                          avatar: CircleAvatar(
+                            backgroundColor: _wasteColor(entry.key, scheme),
+                            radius: 4,
+                          ),
+                          label: Text(
+                            '${entry.key}: ${formatBytes(entry.value)}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: Row(
             children: [
-              Expanded(
-                child: Text(
-                  '${all.length} groups  •  ${formatBytes(reclaimable)} '
-                  'reclaimable by keeping one copy',
-                  style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
-                ),
+              OutlinedButton.icon(
+                onPressed: selectAllDuplicatesExceptFirst,
+                icon: const Icon(Icons.select_all, size: 16),
+                label: const Text('Select duplicates to clean'),
               ),
+              const Spacer(),
               if (selected.isNotEmpty)
                 FilledButton.tonalIcon(
                   onPressed: onTrash,
@@ -616,4 +716,18 @@ class _EmptyTab extends StatelessWidget {
       ],
     );
   }
+}
+
+Color _wasteColor(String category, ColorScheme scheme) {
+  return switch (category) {
+    'Images' => const Color(0xFFAB47BC),
+    'Videos' => const Color(0xFFFF7043),
+    'Documents' => const Color(0xFF42A5F5),
+    'Music' => const Color(0xFFEC407A),
+    'Archives' => const Color(0xFFFFA726),
+    'Programs' => const Color(0xFF26A69A),
+    'Code' => const Color(0xFF5C6BC0),
+    'Data' => const Color(0xFF78909C),
+    _ => scheme.tertiary,
+  };
 }
