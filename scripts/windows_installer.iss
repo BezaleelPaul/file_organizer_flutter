@@ -3,7 +3,7 @@
 ; Version is passed via /DMyAppVersion on the ISCC command line.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "2.1.0"
+  #define MyAppVersion "2.2.0"
 #endif
 
 #define MyAppName "Mise"

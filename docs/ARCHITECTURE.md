@@ -9,7 +9,7 @@ detection, rename/date templates, and reversible history. It runs organize jobs
 manually, from a system-tray menu, from folder watches, and on schedules, and it
 ships a headless CLI (`file_organizer.exe plan|organize|stats`).
 
-Version: `2.1.0+2`. Engine, CLI, and desktop UI share the same core code.
+Version: `2.2.0+1`. Engine, CLI, and desktop UI share the same core code.
 
 ## Layering
 

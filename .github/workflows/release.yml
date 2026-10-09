@@ -163,7 +163,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mise-linux-packages
-          path: dist/linux/*
+          path: |
+            dist/linux/*.deb
+            dist/linux/*.AppImage
           if-no-files-found: error
 
   release:
@@ -178,7 +180,9 @@ jobs:
           path: artifacts
 
       - name: Collect artifacts
-        run: find artifacts -type f -exec mv -t . {} +
+        run: |
+          find artifacts -type f \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.exe" -o -name "*.deb" -o -name "*.AppImage" \) -exec cp -f {} . \;
+          ls -lh *.zip *.tar.gz *.exe *.deb *.AppImage || true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

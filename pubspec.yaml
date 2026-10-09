@@ -1,7 +1,7 @@
 name: file_organizer
 description: "Sort files into folders by type, size, or date on any device."
 publish_to: 'none'
-version: 2.1.0+2
+version: 2.2.0+1
 
 executables:
   mise: bin/mise.dart
