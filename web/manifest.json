@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Mise: Local-first, safety-guaranteed file organizer and disk intelligence suite.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
