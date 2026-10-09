@@ -51,7 +51,7 @@ jobs:
             os: ubuntu-latest
             needs_java: true
             build_cmd: flutter build appbundle --release && flutter build apk --release
-            archive_cmd: mkdir -p android-artifacts && cp build/app/outputs/bundle/release/app-release.aab android-artifacts/ && cp build/app/outputs/apk/release/app-release.apk android-artifacts/ && tar -czf mise-android.tar.gz -C android-artifacts .
+            archive_cmd: cp build/app/outputs/apk/release/app-release.apk mise-android.apk && cp build/app/outputs/bundle/release/app-release.aab mise-android.aab && tar -czf mise-android.tar.gz -C build/app/outputs/apk/release app-release.apk
             artifact: mise-android.tar.gz
 
     steps:
@@ -168,6 +168,16 @@ jobs:
             dist/linux/*.AppImage
           if-no-files-found: error
 
+      - name: Upload Android packages
+        if: matrix.name == 'android'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mise-android-packages
+          path: |
+            mise-android.apk
+            mise-android.aab
+          if-no-files-found: error
+
   release:
     name: Create release
     needs: build
@@ -181,8 +191,8 @@ jobs:
 
       - name: Collect artifacts
         run: |
-          find artifacts -type f \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.exe" -o -name "*.deb" -o -name "*.AppImage" \) -exec cp -f {} . \;
-          ls -lh *.zip *.tar.gz *.exe *.deb *.AppImage || true
+          find artifacts -type f \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.exe" -o -name "*.deb" -o -name "*.AppImage" -o -name "*.apk" -o -name "*.aab" \) -exec cp -f {} . \;
+          ls -lh *.zip *.tar.gz *.exe *.deb *.AppImage *.apk *.aab || true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -193,4 +203,6 @@ jobs:
             *.exe
             *.deb
             *.AppImage
+            *.apk
+            *.aab
           generate_release_notes: true

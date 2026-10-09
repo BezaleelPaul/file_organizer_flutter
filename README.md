@@ -45,8 +45,8 @@ Download ready-to-run release binaries for your operating system:
 | **Linux** | Debian / Ubuntu `.deb` | [**Download .deb**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise_2.2.0_amd64.deb) | Desktop integration, icons, and binary symlink |
 | **Linux** | Standalone AppImage | [**Download AppImage**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/Mise-2.2.0-x86_64.AppImage) | Single executable for all Linux distributions |
 | **Linux** | Tarball `.tar.gz` | [**Download tar.gz**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-linux.tar.gz) | Raw bundle |
-| **macOS** | Bundle `.tar.gz` | [**Download macOS Bundle**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-macos.tar.gz) | Universal binary |
-| **Android** | Packages `.tar.gz` | [**Download Android Bundle**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-android.tar.gz) | Release APK & AppBundle with SAF support |
+| **Android** | Standalone `.apk` | [**Download APK**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-android-2.2.0.apk) | Direct install APK with SAF support |
+| **Android** | App Bundle `.aab` | [**Download AAB**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-android-2.2.0.aab) | Google Play distribution package |
 
 *(Looking for older versions? Visit the [GitHub Releases page](https://github.com/BezaleelPaul/file_organizer_flutter/releases).)*
 
