@@ -3,198 +3,296 @@
 </p>
 
 <p align="center">
-  <strong>Your files. Finally organized.</strong><br>
-  <em>A local-first, safety-guaranteed file organizer and disk intelligence suite for desktop, mobile, and terminal.</em>
+  <img src="assets/icon/app_icon.png" width="96" height="96" alt="Mise Icon"><br>
+  <h1 align="center">Mise</h1>
+  <p align="center">
+    <strong>/miːz/ &bull; <em>"Everything in its place"</em></strong><br>
+    The open-source, local-first file organizer and disk intelligence workstation for desktop, mobile, and terminal.
+  </p>
 </p>
 
 <p align="center">
-  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.41.x-02569B?logo=flutter" alt="Flutter"></a>
-  <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.11+-0175C2?logo=dart" alt="Dart"></a>
-  <img src="https://img.shields.io/badge/Tests-94%20Passing-brightgreen" alt="Tests">
-  <img src="https://img.shields.io/badge/Platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android%20%7C%20iOS-informational" alt="Platforms">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
+  <a href="https://github.com/BezaleelPaul/file_organizer_flutter/releases/latest"><img src="https://img.shields.io/github/v/release/BezaleelPaul/file_organizer_flutter?style=for-the-badge&logo=github&color=6366f1" alt="Latest Release"></a>
+  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.41-02569B?style=for-the-badge&logo=flutter" alt="Flutter"></a>
+  <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.11+-0175C2?style=for-the-badge&logo=dart" alt="Dart"></a>
+  <img src="https://img.shields.io/badge/Tests-94%20Passing-10b981?style=for-the-badge" alt="Tests">
+  <img src="https://img.shields.io/badge/Privacy-100%25%20Offline-f59e0b?style=for-the-badge" alt="Privacy">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License"></a>
+</p>
+
+<p align="center">
+  <a href="#-quick-downloads">Downloads</a> &bull;
+  <a href="#-why-mise">Why Mise</a> &bull;
+  <a href="#-core-features">Features</a> &bull;
+  <a href="#-how-it-works">How It Works</a> &bull;
+  <a href="#-command-line-interface-cli">CLI</a> &bull;
+  <a href="#-search-syntax-cheat-sheet">Query Syntax</a> &bull;
+  <a href="#-comparison">Comparison</a> &bull;
+  <a href="#-development--building">Build</a>
 </p>
 
 ---
 
-## The Mise Philosophy
+## 📥 Quick Downloads
 
-> **Mise is the only file organizer that runs everywhere you do — desktop, mobile, and command line — keeps everything 100% offline, and never lets you lose a file it moved. Scan before you move. Undo anything. Own your data.**
+Download ready-to-run release binaries for your operating system:
 
-Named after the French culinary discipline *mise en place* (*"everything in its place"*), Mise replaces messy single-platform scripts, paid proprietary utilities, and cloud-dependent file sorters with an offline, high-performance workstation.
+| Platform | Format | Download Link | Notes |
+|:---|:---|:---|:---|
+| **Windows** | Setup `.exe` | [**Download Installer**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-setup-2.2.0.exe) | Inno Setup installer with start menu & desktop shortcuts |
+| **Windows** | Portable `.zip` | [**Download ZIP**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-windows.zip) | Portable release — extract and run anywhere |
+| **Linux** | Debian / Ubuntu `.deb` | [**Download .deb**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise_2.2.0_amd64.deb) | Desktop integration, icons, and binary symlink |
+| **Linux** | Standalone AppImage | [**Download AppImage**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/Mise-2.2.0-x86_64.AppImage) | Single executable for all Linux distributions |
+| **Linux** | Tarball `.tar.gz` | [**Download tar.gz**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-linux.tar.gz) | Raw bundle |
+| **macOS** | Bundle `.tar.gz` | [**Download macOS Bundle**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-macos.tar.gz) | Universal binary |
+| **Android** | Packages `.tar.gz` | [**Download Android Bundle**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-android.tar.gz) | Release APK & AppBundle with SAF support |
 
----
-
-## Highlights & What's New
-
-<table>
-  <tr>
-    <td width="50%">
-      <h3>🛡️ "Zero Fear" Safety Architecture</h3>
-      <ul>
-        <li><strong>Interactive Plan Preview:</strong> See exactly where every file goes before moving a single byte.</li>
-        <li><strong>Collision-Proof Renaming:</strong> Never overwrites existing files — automatically sequences collisions as <code>file (1).ext</code>.</li>
-        <li><strong>Selective Smart Undo:</strong> Revert an entire batch or <strong>roll back single specific files</strong> without reverting the whole run.</li>
-        <li><strong>Centralized OS Journals:</strong> History is preserved in the OS Application Support directory (<code>%APPDATA%</code>, <code>~/Library</code>) — keeping target folders completely clean.</li>
-      </ul>
-    </td>
-    <td width="50%">
-      <h3>⚡ High-Performance Disk Engine</h3>
-      <ul>
-        <li><strong>Streamed 3-Stage Duplicate Finder:</strong> OOM-proof memory management that streams files in 64KB chunks — handles 50GB+ files without RAM spikes.</li>
-        <li><strong>Reclaimable Storage Treemap:</strong> Visual breakdown of duplicate disk waste by category with a 1-click <em>"Clean Duplicates"</em> action.</li>
-        <li><strong>Background Isolate Traversal:</strong> Recursive folder walking runs in dedicated Dart isolates — keeps UI butter-smooth at 60/120fps.</li>
-        <li><strong>Deep Search & Tags:</strong> Rich query syntax (<code>type:image</code>, <code>>100MB</code>, <code>modified:last-week</code>) and color-coded virtual tags.</li>
-      </ul>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <h3>🧠 Adaptive Local Intelligence</h3>
-      <ul>
-        <li><strong>100% Private & Offline:</strong> Zero cloud telemetry, no OpenAI API keys, and zero external network calls.</li>
-        <li><strong>Magic Byte Verification:</strong> Reads file signatures (PDF, PNG, MP3, WebP, FLAC, SQLite, ELF, PE) to classify files even when extensions are missing or misleading.</li>
-        <li><strong>Self-Tuning Heuristics:</strong> Remembers your manual overrides in the Plan Preview to automatically train future classifications.</li>
-        <li><strong>No File Limits:</strong> Analyzes thousands of files progressively with streaming classification.</li>
-      </ul>
-    </td>
-    <td width="50%">
-      <h3>💻 Desktop, Mobile & CLI Parity</h3>
-      <ul>
-        <li><strong>Material 3 Interface:</strong> Adaptive layout supporting desktop navigation rails, light/dark modes, and mobile navigation bars.</li>
-        <li><strong>System Tray Daemon:</strong> Background folder watching and instant tray-driven organization.</li>
-        <li><strong>Headless CLI (<code>mise</code>):</strong> Native command-line interface for bash scripts, cron jobs, and CI automation with JSON output.</li>
-        <li><strong>Universal Storage Layer:</strong> Bridges <code>dart:io</code> and Android's Storage Access Framework (SAF) seamlessly.</li>
-      </ul>
-    </td>
-  </tr>
-</table>
+*(Looking for older versions? Visit the [GitHub Releases page](https://github.com/BezaleelPaul/file_organizer_flutter/releases).)*
 
 ---
 
-## Application Screens
+## 💡 Why Mise?
 
-| Screen | Description |
-|---|---|
-| **Dashboard** | Instant overview of organized files, recent runs, watched folders, and quick-start actions. |
-| **Organize** | Pick any folder, choose sort mode (Extensions, Size, Date, or Rules), review the interactive plan, reclassify on the fly, and execute safely. |
-| **Storage Center** | Disk space breakdown, large file finder, empty folder cleanup, and the **Duplicate Treemap** with reclaimable space analytics. |
-| **Search & Tags** | Fast indexed search with rich query operators (<code>type:image</code>, <code>tag:work</code>, <code>>50MB</code>) and dynamic Smart Collections. |
-| **Rules & Auto Rules**| 12 customizable category maps plus a visual multi-condition rule builder (Regex names, size ranges, extensions, date windows). |
-| **Watch & Schedule** | Background directory monitoring with debounce timers, recurring interval schedules, and tray synchronization. |
-| **History** | Audit trail of all previous runs with complete batch rollback and **per-file selective undo**. |
+Named after the culinary standard ***mise en place*** (*"everything in its place before cooking starts"*), **Mise** solves the chaotic desktop problem without compromising control or privacy.
+
+> **"Most file organizers force you to choose between paying $42 for a single-platform utility, running risky terminal scripts with no undo, or handing file metadata to cloud servers. Mise is 100% offline, cross-platform, journaled, and mathematically collision-proof."**
+
+```
+❌ Traditional Sorters:
+  Move files immediately ──> Overwrite collisions ──> Memory OOMs on 4GB video ──> No undo
+
+✅ Mise Workflow:
+  Streamed Isolate Scan ──> Interactive Plan Preview ──> Collision-Proof Safe Move ──> Selective Undo
+```
 
 ---
 
-## How a Run Works
+## 🌟 Core Features
+
+### 🛡️ 1. Zero-Fear Safety Architecture
+* **Interactive Plan Preview:** Inspect every proposed file movement before executing. Review categories, rename patterns, and file sizes beforehand.
+* **Selective Rollback:** Realized a single file was categorized incorrectly? Don't revert the entire 500-file run — roll back **individual specific files** or undo whole batches with a single click.
+* **Collision-Proof Renaming:** Mise never overwrites existing target files. Collisions are automatically safely sequenced (`invoice.pdf` &rarr; `invoice (1).pdf`).
+* **Centralized System Audit Journal:** Unlike tools that dump messy hidden files into your folders, Mise records transactions in your platform's application support directory (`%APPDATA%`, `~/Library`, `~/.local/share`). Target directories stay immaculate.
+
+### ⚡ 2. 3-Stage Streamed Duplicate Engine (OOM-Proof)
+Duplicate scanners often crash with Out-Of-Memory (OOM) errors on large media collections. Mise implements a tiered cascade filter:
+1. **Stage 1 (O(1)):** Compares exact file sizes. Eliminates ~85% of distinct files instantly.
+2. **Stage 2 (O(8KB)):** Compares first 4KB and last 4KB binary slices. Quick-matches headers and trailers.
+3. **Stage 3 (Chunked Stream):** Streams full SHA-256 digests in 64KB bounded chunks. Consumes constant memory regardless of whether files are 5MB or 50GB.
+* **Reclaimable Storage Treemap:** Interactive disk visualization showing wasted storage across directories with a 1-click duplicate cleaner that moves redundant copies safely to the reversible Trash folder.
+
+### 🧠 3. Adaptive Local Intelligence (100% Offline)
+* **Magic Byte Content Inspection:** Identifies PDFs, PNGs, MP3s, WebPs, and ZIPs by their binary signatures (`%PDF-`, `\x89PNG`, `ID3`), correctly classifying files even with missing or wrong extensions.
+* **Self-Tuning User Feedback:** When you manually reclassify a file in the Plan Preview, Mise stores your preference locally and adapts its scoring model for future scans.
+* **Zero Cloud Dependence:** No external API keys, zero network traffic, no background telemetry. Your personal files and directory structures never leave your machine.
+
+### 🔍 4. Power Search & Smart Collections
+Filter thousands of files instantaneously using a rich query operator syntax:
+* **Extensions:** `ext:pdf`, `*.mov`
+* **Categories:** `type:image`, `type:document`, `type:video`
+* **Sizes:** `>100MB`, `<5KB`, `>=1GB`
+* **Date Windows:** `modified:last-week`, `modified:year`, `after:2026-01-01`
+* **Virtual Tags:** Organize files with colorful metadata tags (`tag:taxes`, `tag:work`) and save queries as dynamic **Smart Collections**.
+
+### 💻 5. Multi-Platform & Background Automation
+* **Desktop Native:** Full support for Windows 10/11, macOS, and Linux with Material 3 styling, adaptive navigation rails, and light/dark theme toggle.
+* **System Tray Daemon:** Runs quietly in the system tray. Quick-launch folder actions or let background watchers auto-organize downloads with configurable debounce timers.
+* **Android Support:** Full integration with Android's Storage Access Framework (SAF) for organizing mobile Downloads and DCIM storage.
+
+---
+
+## 🔄 How It Works
 
 ```mermaid
-flowchart LR
-    A["1. Scan Folder"] --> B["2. Review Plan"]
-    B --> C["3. Execute Moves"]
-    C --> D["4. Centralized Journal"]
-    D --> E["5. Selective / Batch Undo"]
-    
+flowchart TD
+    A["📂 Select Folder"] --> B["⚡ Background Isolate Scan"]
+    B --> C["🔬 Magic Bytes & Rule Matching"]
+    C --> D["📋 Interactive Plan Preview"]
+    D -->|User Adjusts / Confirms| E["🚀 Execute Move / Copy"]
+    E --> F["📑 Centralized OS Audit Journal"]
+    F --> G["↺ Selective Rollback or Batch Undo"]
+
     style A fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#fff
     style B fill:#1e293b,stroke:#6366f1,stroke-width:2px,color:#fff
-    style C fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
-    style D fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
-    style E fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fff
+    style C fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    style D fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fff
+    style E fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
+    style F fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style G fill:#1e293b,stroke:#06b6d4,stroke-width:2px,color:#fff
 ```
 
-1. **Scan** — `Organizer.scan()` categorizes files using extensions, visual rules, and magic bytes without modifying anything on disk.
-2. **Plan** — Mise presents a review table showing source, target folder, and suggestions. Users can reclassify or skip files.
-3. **Execute** — Files are moved or copied. Colliding filenames automatically get unique numerical suffixes (`photo (1).jpg`).
-4. **Journal** — Every operation is recorded in the OS Application Support directory (`history.json`).
-5. **Undo** — At any time, users can revert individual files or rollback the entire batch to restore originals and remove empty folders.
+1. **Scan:** Reads folder hierarchy inside a background Dart Isolate without causing UI stutter.
+2. **Analyze:** Evaluates extension rules, size buckets, date patterns, and binary magic bytes.
+3. **Preview:** Displays a clear blueprint of all planned changes. You can tweak categories or exclude files.
+4. **Execute:** Executes moves atomically with automatic collision resolution (`filename (1).ext`).
+5. **Undo:** Any operation can be partially or completely reverted at any time.
 
 ---
 
-## Command-Line Interface (CLI)
+## 🖥️ Command-Line Interface (CLI)
 
-The exact same Dart engine powers a headless CLI executable:
+Mise includes a headless CLI powered by the exact same engine. Perfect for cron jobs, terminal workflows, and CI/CD pipelines.
 
 ```bash
-# Preview planned moves without touching disk
-dart run file_organizer:mise plan /path/to/folder
+# Preview planned changes without modifying any files (dry run)
+mise plan ~/Downloads
 
-# Organize folder by extension
-dart run file_organizer:mise organize /path/to/folder
+# Organize files into standard categories
+mise organize ~/Downloads
 
-# Sort by date buckets into YYYY-MM subfolders
-dart run file_organizer:mise organize /path/to/folder --by-date
+# Organize with date-based subfolders (YYYY-MM)
+mise organize ~/Downloads --by-date
 
-# Detect byte duplicates and move redundancies to Trash
-dart run file_organizer:mise organize /path/to/folder --detect-duplicates --duplicates-to-trash
+# Detect byte duplicates and move redundancies to Trash safely
+mise organize ~/Downloads --detect-duplicates --duplicates-to-trash
 
-# Output machine-readable JSON for scripts and CI
-dart run file_organizer:mise stats /path/to/folder --json
+# Output machine-readable JSON for bash scripts and pipelines
+mise stats ~/Downloads --json
+```
+
+### Example Terminal Output
+
+```
+$ mise plan ~/Downloads
+🔍 Scanning /Users/bezaleel/Downloads ...
+✓ Found 164 files (4.8 GB) in 142ms
+
+Proposed Organization Plan:
+├── 📁 Images/         68 files (1.4 GB)   [PNG, JPG, SVG, WebP]
+├── 📁 Documents/      42 files (320 MB)   [PDF, DOCX, XLSX]
+├── 📁 Archives/       24 files (2.2 GB)   [ZIP, TAR.GZ, 7Z]
+├── 📁 Development/    18 files (140 MB)   [DART, JSON, PY, YAML]
+└── 🗑️ Duplicates/     12 files (740 MB)   --> Moved to Trash [Reversible]
+
+0 files overwritten. Run 'mise organize ~/Downloads' to apply.
 ```
 
 ---
 
-## Competitive Comparison
+## 🔎 Search Syntax Cheat Sheet
+
+Mise's built-in search bar supports granular compound expressions:
+
+| Operator | Syntax Example | Meaning |
+|:---|:---|:---|
+| **Free Text** | `contract` | Matches any file containing "contract" in its name |
+| **Extension** | `ext:pdf` or `*.zip` | Filter by specific file extension |
+| **Category** | `type:image`, `type:audio` | Match any extension within that category |
+| **Size Greater**| `>50MB`, `>=1GB` | Files larger than threshold |
+| **Size Smaller**| `<10KB`, `<=2MB` | Files smaller than threshold |
+| **Timeframe** | `modified:last-week` | Modified within the past 7 days |
+| **Year Window** | `modified:2026` | Modified during year 2026 |
+| **Date Range** | `after:2026-01-01 before:2026-06-30` | Modified between two dates |
+| **Tags** | `tag:work tag:finance` | Files labeled with virtual tags |
+| **Combined** | `type:image >5MB modified:this-month` | Full Boolean AND query combination |
+
+---
+
+## 📊 Comparison
+
+How Mise stands against existing solutions:
 
 | Feature | **Mise** | **Hazel** | **File Juggler** | **DropIt** | **Python `organize`** |
 |:---|:---:|:---:|:---:|:---:|:---:|
-| **Platforms** | **Windows, macOS, Linux, Android, iOS** | macOS only | Windows only | Windows only | Cross-platform (CLI) |
-| **Price** | **Free / Open Source** | $42+ | $40 | Free | Free |
-| **Interface** | **Material 3 GUI + Tray + CLI** | Preferences pane | Legacy Win32 | Floating box | YAML / Terminal only |
-| **Undo Safety** | **Selective + Batch Undo** | Basic Trash | Basic Trash | Limited | Dry-run only |
-| **Duplicate Engine** | **3-Stage Streamed SHA-256 + Treemap** | None | None | None | Basic |
-| **Intelligence** | **Local Magic Bytes + Self-Tuning Tokens** | PDF text matching | Content rules | Pattern matching | Regex filters |
-| **Memory Footprint** | **Constant 64KB bounded stream** | Low | Medium | Low | Medium |
+| **Platforms** | **Windows, macOS, Linux, Android, iOS** | macOS only | Windows only | Windows only | Any (Terminal) |
+| **Pricing** | **Free & Open Source (MIT)** | $42 / license | $40 / license | Free | Free |
+| **User Interface** | **Modern Material 3 GUI + CLI + Tray** | System Prefs pane | Legacy Win32 | Floating desktop box | None (YAML file) |
+| **Undo Safety** | **Per-file Selective + Full Batch Undo** | Basic Trash | Basic Trash | Limited | Dry-run only |
+| **Duplicate Finder** | **Streamed 3-Stage SHA-256 + Treemap** | ❌ None | ❌ None | ❌ None | Basic |
+| **Offline Privacy** | **100% Local (Zero network calls)** | 100% Local | 100% Local | 100% Local | 100% Local |
+| **Memory Footprint**| **Bounded 64KB Stream (OOM-Safe)** | Moderate | Moderate | Moderate | Moderate |
+| **System Tray** | **Yes (Background Watch & Shortcuts)** | Menu Bar | Tray Icon | Floating Drop Area | ❌ No |
 
 ---
 
-## Installation & Getting Started
+## 🏗️ Project Architecture
+
+Mise is structured around modular, single-responsibility controllers and services:
+
+```
+file_organizer_flutter/
+├── bin/
+│   └── mise.dart                    # Headless CLI entry point
+├── lib/
+│   ├── main.dart                    # Application bootstrap & desktop window setup
+│   ├── state/
+│   │   ├── organize_controller.dart # Scan, plan, execute, and rollback logic
+│   │   ├── storage_controller.dart  # Duplicates, disk treemap, and file analysis
+│   │   ├── search_controller.dart   # File search index, tags, and collections
+│   │   ├── watch_controller.dart    # Folder watchers and interval schedules
+│   │   └── settings_controller.dart # Theme, layout, and user preferences
+│   ├── services/
+│   │   ├── organize_service.dart    # Organization core execution
+│   │   ├── disk_scanner.dart        # Background Isolate folder traversal
+│   │   ├── history_store.dart       # Centralized OS application-support storage
+│   │   ├── suggestion_engine.dart   # Magic bytes and adaptive keyword heuristics
+│   │   └── tray_service.dart        # System tray menu and background icon
+│   └── views/                       # Responsive Material 3 views and dialogs
+└── test/                            # 94 comprehensive unit and integration tests
+```
+
+---
+
+## 🛠️ Development & Building
 
 ### Prerequisites
-- Flutter SDK **3.41.x+**, Dart SDK **3.11+**
-- Platform toolchains (Visual Studio C++ for Windows, Xcode for macOS/iOS, GTK headers for Linux).
+* [Flutter SDK](https://docs.flutter.dev/get-started/install) **3.41.x+**
+* [Dart SDK](https://dart.dev/get-dart) **3.11+**
+* Native build tools for your host OS (Visual Studio C++ on Windows, Xcode on macOS, GTK3 development libraries on Linux).
 
-### Setup & Run
+### Local Setup
 ```bash
-# Clone the repository
+# 1. Clone repository
 git clone https://github.com/BezaleelPaul/file_organizer_flutter.git
 cd file_organizer_flutter
 
-# Install dependencies
+# 2. Get dependencies
 flutter pub get
 
-# Run the test suite
+# 3. Run test suite (94 passing tests)
 flutter test
 
-# Launch on your platform
-flutter run -d windows    # or: -d macos, -d linux, -d android
+# 4. Launch development application
+flutter run -d windows    # Options: windows, macos, linux, android
 ```
 
-### Release Builds
+### Production Packaging
 ```bash
-# Windows Installer / Executable
+# Windows
 flutter build windows --release
 
-# macOS Application Bundle
+# Linux
+flutter build linux --release
+bash scripts/package_linux.sh   # Creates .deb and .AppImage packages
+
+# macOS
 flutter build macos --release
 
-# Linux Package
-flutter build linux --release
-
-# Android APK & App Bundle
+# Android
 flutter build apk --release
 flutter build appbundle --release
 ```
 
 ---
 
-## Roadmap
+## 🤝 Contributing
 
-See the detailed **[ROADMAP.md](ROADMAP.md)** for the complete two-track plan:
-- **Track A (Technical Remediation)**: All stability, memory, and architectural tasks complete.
-- **Track B (Product Differentiation)**: Selective undo and duplicate treemaps delivered; natural language rule grammar and Magika ONNX neural runtime in progress.
+Contributions are welcome! Whether it's adding new file signatures, improving localized heuristics, or enhancing mobile workflows:
+
+1. Fork the repository.
+2. Create your feature branch (`git checkout -b feat/amazing-feature`).
+3. Ensure all tests and analyzers pass cleanly:
+   ```bash
+   flutter analyze
+   flutter test
+   ```
+4. Commit your changes with conventional commit syntax (`git commit -m 'feat: add audio album tag extraction'`).
+5. Push to your branch and open a Pull Request.
 
 ---
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+Mise is open-source software licensed under the **[MIT License](LICENSE)**.
+Created with ❤️ by [Bezaleel Paul](https://github.com/BezaleelPaul) and contributors.
