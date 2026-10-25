@@ -6,7 +6,9 @@ import 'dart:io';
 import 'dart:ui' show Color;
 
 import 'package:file_organizer/ai/suggestion_engine.dart';
+import 'package:file_organizer/core/history_store.dart';
 import 'package:file_organizer/core/models.dart';
+import 'package:file_organizer/core/organizer.dart';
 import 'package:file_organizer/core/rules.dart';
 import 'package:file_organizer/core/update_checker.dart' as update;
 import 'package:file_organizer/core/storage/io_storage_service.dart';
@@ -48,13 +50,21 @@ class AppState extends ChangeNotifier {
   final SettingsStore store;
   final StorageService storage = createStorageService();
 
-  late final StorageController storageController = StorageController(storage: storage);
+  late final StorageController storageController = StorageController(
+    storage: storage,
+  );
   late final SearchController searchController = SearchController(store: store);
-  late final OrganizeController organizeController = OrganizeController(storage: storage);
+  late final OrganizeController organizeController = OrganizeController(
+    storage: storage,
+  );
 
   bool get osWatchSupported => _osWatchSupported;
 
   bool initialized = false;
+
+  /// Non-null when startup failed. The UI shows a recoverable error screen
+  /// instead of leaving the splash screen stuck forever.
+  Object? startupError;
   CompletionMessage? completion;
 
   CategoryMap categories = normalizeCategories(defaultCategories);
@@ -108,11 +118,7 @@ class AppState extends ChangeNotifier {
   /// Snapshot of the current settings for one organize run. [byExtension],
   /// [bySize] and [byDate] come from the global flags unless overridden by a
   /// watch/schedule job.
-  OrganizeConfig _config({
-    bool? byExtension,
-    bool? bySize,
-    bool? byDate,
-  }) =>
+  OrganizeConfig _config({bool? byExtension, bool? bySize, bool? byDate}) =>
       OrganizeConfig(
         categories: categories,
         byExtension: byExtension ?? this.byExtension,
@@ -129,12 +135,137 @@ class AppState extends ChangeNotifier {
       );
 
   Future<void> _recordHistory(HistoryEntry entry) async {
+    history.removeWhere(
+      (h) => h.timestamp == entry.timestamp && h.root == entry.root,
+    );
     history.insert(0, entry);
     if (history.length > 50) history.removeRange(50, history.length);
     await store.saveHistory(history);
   }
 
+  Future<JournalWriter> _startJournal(String root, {String? action}) =>
+      store.startJournal(
+        action: action ?? (copyInsteadOfMove ? 'copy' : 'move'),
+        root: root,
+      );
+
+  /// Run the scan → execute pipeline with a crash-safe journal, recording the
+  /// result in history only after it is safely written.
+  Future<OrganizeResult> _organizeWithJournal(
+    String root,
+    OrganizeConfig config, {
+    void Function(String message)? log,
+    bool skipDuplicates = true,
+  }) async {
+    final journal = await _startJournal(root);
+    try {
+      final result = await _organize.organize(
+        root,
+        config,
+        skipDuplicates: skipDuplicates,
+        log: log,
+        beforeMove: journal.intent,
+        afterMove: journal.done,
+        onCreatedDir: journal.createdDir,
+      );
+      final entry = result.entry;
+      if (entry == null) {
+        await journal.discard();
+        return result;
+      }
+      await _recordHistory(entry);
+      await journal.commit();
+      return result;
+    } on OrganizeFailure catch (e) {
+      await _handleOrganizeFailure(e, journal);
+      rethrow;
+    } catch (e) {
+      await journal.leaveForRecovery();
+      rethrow;
+    }
+  }
+
+  /// Record a failed run so files that already moved can still be undone.
+  Future<void> _handleOrganizeFailure(
+    OrganizeFailure failure,
+    JournalWriter? journal,
+  ) async {
+    error = failure.toString();
+    addLog('ERROR: $failure');
+    if (failure.rolledBack) {
+      await journal?.discard();
+      return;
+    }
+    final partial = failure.entry.copyWith(status: 'incomplete');
+    try {
+      await _recordHistory(partial);
+      await journal?.discard();
+      completion = CompletionMessage(
+        title: 'Organize stopped',
+        message:
+            '${failure.entry.count} '
+            'file${failure.entry.count == 1 ? '' : 's'} had already moved and '
+            'were saved to History. Undo is available there.',
+        success: false,
+        undoEntry: partial,
+      );
+    } catch (e) {
+      // Keep the journal on disk so the next launch can recover it.
+      await journal?.leaveForRecovery();
+      error = 'Organize failed and the recovery journal could not be saved: $e';
+      addLog('ERROR: $error');
+    }
+  }
+
   Future<void> _init() async {
+    try {
+      await _loadAndStart();
+      startupError = null;
+      initialized = true;
+    } catch (e, stack) {
+      debugPrint('Mise startup failed: $e\n$stack');
+      startupError = e;
+      initialized = true;
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  /// Retry startup after a failure without restarting the process.
+  Future<void> retryInit() async {
+    if (startupError == null) return;
+    startupError = null;
+    initialized = false;
+    notifyListeners();
+    await _init();
+  }
+
+  /// Import journals left behind by a crash/forced shutdown so those moves can
+  /// still be undone.
+  Future<void> _recoverInFlight() async {
+    final recovered = await store.recoverInFlight();
+    if (recovered.isEmpty) return;
+    final seen = history.map((h) => '${h.timestamp}|${h.root}').toSet();
+    var added = 0;
+    for (final entry in recovered) {
+      if (!seen.add('${entry.timestamp}|${entry.root}')) continue;
+      history.add(entry);
+      added += 1;
+    }
+    if (added == 0) return;
+    history.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    await store.saveHistory(history);
+    final count = recovered.fold<int>(0, (sum, entry) => sum + entry.count);
+    completion = CompletionMessage(
+      title: 'Recovered an unfinished run',
+      message:
+          '$count file${count == 1 ? '' : 's'} from a run that did not '
+          'finish were imported into History. Review them and undo if needed.',
+      success: false,
+    );
+  }
+
+  Future<void> _loadAndStart() async {
     categories = await store.loadCategories();
     final flags = await store.loadFlags();
     byExtension = flags['byExtension'] ?? true;
@@ -164,12 +295,13 @@ class AppState extends ChangeNotifier {
     final lastRoot = await store.loadLastRoot();
     if (lastRoot != null) root = lastRoot;
     _osWatchSupported =
-        storage is IoStorageService && !kIsWeb && FileSystemEntity.isWatchSupported;
+        storage is IoStorageService &&
+        !kIsWeb &&
+        FileSystemEntity.isWatchSupported;
+    await _recoverInFlight();
     _startWatching();
     _startScheduler();
     await _syncTrayMenu();
-    initialized = true;
-    notifyListeners();
   }
 
   /// Clear the pending completion message (after it has been shown).
@@ -186,10 +318,13 @@ class AppState extends ChangeNotifier {
     error = null;
     notifyListeners();
   }
+
   void addLog(String line) {
-    logLines.add('${DateTime.now().hour.toString().padLeft(2, '0')}:'
-        '${DateTime.now().minute.toString().padLeft(2, '0')}:'
-        '${DateTime.now().second.toString().padLeft(2, '0')}  $line');
+    logLines.add(
+      '${DateTime.now().hour.toString().padLeft(2, '0')}:'
+      '${DateTime.now().minute.toString().padLeft(2, '0')}:'
+      '${DateTime.now().second.toString().padLeft(2, '0')}  $line',
+    );
     if (logLines.length > 200) {
       logLines.removeRange(0, logLines.length - 200);
     }
@@ -262,7 +397,9 @@ class AppState extends ChangeNotifier {
     await _operations.run(() async {
       _setBusy(BusyKind.organizing);
       addLog('Organizing…');
+      JournalWriter? journal;
       try {
+        journal = await _startJournal(current);
         final entry = await _organize.executePlan(
           current,
           plan,
@@ -272,11 +409,16 @@ class AppState extends ChangeNotifier {
             notifyListeners();
           },
           log: (m) => addLog(m),
+          beforeMove: journal.intent,
+          afterMove: journal.done,
+          onCreatedDir: journal.createdDir,
         );
         await _recordHistory(entry);
-        final folderCount =
-            entry.moves.map((m) => m.destDir).toSet().length;
-        status = '${entry.count} files ${copyInsteadOfMove ? 'copied' : 'moved'}';
+        await journal.commit();
+        journal = null;
+        final folderCount = entry.moves.map((m) => m.destDir).toSet().length;
+        status =
+            '${entry.count} files ${copyInsteadOfMove ? 'copied' : 'moved'}';
         addLog(status);
         completion = CompletionMessage(
           title: copyInsteadOfMove ? 'Files copied' : 'All organized',
@@ -286,7 +428,12 @@ class AppState extends ChangeNotifier {
           undoEntry: entry,
         );
         _setBusy(BusyKind.none);
+      } on OrganizeFailure catch (e) {
+        await _handleOrganizeFailure(e, journal);
+        journal = null;
+        _setBusy(BusyKind.none);
       } catch (e) {
+        await journal?.leaveForRecovery();
         error = e.toString();
         addLog('ERROR: $e');
         _setBusy(BusyKind.none);
@@ -301,9 +448,11 @@ class AppState extends ChangeNotifier {
       addLog('Undoing ${entry.count} files…');
       try {
         await _organize.undo(entry, log: (m) => addLog(m));
-        final idx = history.indexWhere((h) =>
-            identical(h, entry) ||
-            (h.timestamp == entry.timestamp && h.root == entry.root));
+        final idx = history.indexWhere(
+          (h) =>
+              identical(h, entry) ||
+              (h.timestamp == entry.timestamp && h.root == entry.root),
+        );
         if (idx >= 0) {
           history[idx] = history[idx].copyWith(status: 'rolled_back');
         } else {
@@ -315,7 +464,8 @@ class AppState extends ChangeNotifier {
         addLog(status);
         completion = CompletionMessage(
           title: 'Changes undone',
-          message: '${entry.count} files have been restored to their original '
+          message:
+              '${entry.count} files have been restored to their original '
               'folders.',
         );
         _setBusy(BusyKind.none);
@@ -341,10 +491,16 @@ class AppState extends ChangeNotifier {
       _setBusy(BusyKind.undo);
       addLog('Undoing ${selectedMoves.length} selected file(s)…');
       try {
-        await _organize.undoSelected(entry, selectedMoves, log: (m) => addLog(m));
-        final idx = history.indexWhere((h) =>
-            identical(h, entry) ||
-            (h.timestamp == entry.timestamp && h.root == entry.root));
+        await _organize.undoSelected(
+          entry,
+          selectedMoves,
+          log: (m) => addLog(m),
+        );
+        final idx = history.indexWhere(
+          (h) =>
+              identical(h, entry) ||
+              (h.timestamp == entry.timestamp && h.root == entry.root),
+        );
         if (idx >= 0) {
           final remainingMoves = entry.moves
               .where((m) => !selectedMoves.contains(m))
@@ -477,9 +633,14 @@ class AppState extends ChangeNotifier {
 
   /// The 8 colors of the tag palette (index = color of a Tag).
   static const tagPalette = <Color>[
-    Color(0xFFE57373), Color(0xFFF06292), Color(0xFFBA68C8),
-    Color(0xFF64B5F6), Color(0xFF4DB6AC), Color(0xFF81C784),
-    Color(0xFFFFB74D), Color(0xFFA1887F),
+    Color(0xFFE57373),
+    Color(0xFFF06292),
+    Color(0xFFBA68C8),
+    Color(0xFF64B5F6),
+    Color(0xFF4DB6AC),
+    Color(0xFF81C784),
+    Color(0xFFFFB74D),
+    Color(0xFFA1887F),
   ];
 
   Future<void> setTags(List<Tag> tags) async {
@@ -552,8 +713,10 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> setExcludePatterns(List<String> patterns) async {
-    excludePatterns =
-        patterns.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    excludePatterns = patterns
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
     await store.saveExcludes(excludePatterns);
     notifyListeners();
   }
@@ -596,13 +759,16 @@ class AppState extends ChangeNotifier {
         if (!watch.running) continue;
         try {
           final watcher = DirectoryWatcher(watch.root);
-          final sub = watcher.events.listen((event) {
-            if (event.type == ChangeType.REMOVE) return;
-            _scheduleOsWatch(watch);
-          }, onError: (Object e) {
-            watch.error = e.toString();
-            notifyListeners();
-          });
+          final sub = watcher.events.listen(
+            (event) {
+              if (event.type == ChangeType.REMOVE) return;
+              _scheduleOsWatch(watch);
+            },
+            onError: (Object e) {
+              watch.error = e.toString();
+              notifyListeners();
+            },
+          );
           _osWatchers[watch.root] = sub;
         } catch (_) {
           // Fall back to polling for this folder.
@@ -620,8 +786,7 @@ class AppState extends ChangeNotifier {
         final last = watch.lastRun == null
             ? null
             : DateTime.tryParse(watch.lastRun!);
-        if (last != null &&
-            now.difference(last).inSeconds < watch.interval) {
+        if (last != null && now.difference(last).inSeconds < watch.interval) {
           continue;
         }
         _runWatch(watch);
@@ -636,7 +801,9 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  Future<void> addWatch(String root, int interval, {
+  Future<void> addWatch(
+    String root,
+    int interval, {
     bool byExtension = true,
     bool bySize = false,
     bool byDate = false,
@@ -646,13 +813,15 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    watches.add(WatchJob(
-      root: root,
-      interval: interval,
-      byExtension: byExtension,
-      bySize: bySize,
-      byDate: byDate,
-    ));
+    watches.add(
+      WatchJob(
+        root: root,
+        interval: interval,
+        byExtension: byExtension,
+        bySize: bySize,
+        byDate: byDate,
+      ),
+    );
     await store.saveWatches(watches);
     _startWatching();
     await _syncTrayMenu();
@@ -708,7 +877,7 @@ class AppState extends ChangeNotifier {
       _setBusy(BusyKind.organizing);
       addLog('Organizing from the tray…');
       try {
-        final result = await _organize.organize(
+        final result = await _organizeWithJournal(
           current,
           _config(),
           log: (m) => addLog('[tray] $m'),
@@ -722,10 +891,10 @@ class AppState extends ChangeNotifier {
           _setBusy(BusyKind.none);
           return;
         }
-        await _recordHistory(entry);
         completion = CompletionMessage(
           title: 'Organized from the tray',
-          message: '${entry.count} file${entry.count == 1 ? '' : 's'} organized '
+          message:
+              '${entry.count} file${entry.count == 1 ? '' : 's'} organized '
               'in $current.',
           undoEntry: entry,
         );
@@ -760,7 +929,7 @@ class AppState extends ChangeNotifier {
   Future<void> _runWatch(WatchJob watch, {bool wait = false}) {
     return _operations.run(() async {
       try {
-        final result = await _organize.organize(
+        final result = await _organizeWithJournal(
           watch.root,
           _config(
             byExtension: watch.byExtension,
@@ -770,9 +939,10 @@ class AppState extends ChangeNotifier {
           log: (m) => addLog('[watch] $m'),
         );
         final entry = result.entry;
+        watch.error = null;
         watch.lastRun = DateTime.now().toIso8601String();
         watch.lastCount = entry?.count ?? 0;
-        if (entry != null) await _recordHistory(entry);
+        await store.saveWatches(watches);
         notifyListeners();
       } catch (e) {
         watch.error = e.toString();
@@ -831,7 +1001,7 @@ class AppState extends ChangeNotifier {
   Future<void> _runSchedule(ScheduleJob job, {bool wait = false}) {
     return _operations.run(() async {
       try {
-        final result = await _organize.organize(
+        final result = await _organizeWithJournal(
           job.root,
           _config(
             byExtension: job.byExtension,
@@ -841,9 +1011,10 @@ class AppState extends ChangeNotifier {
           log: (m) => addLog('[schedule] $m'),
         );
         final entry = result.entry;
+        job.error = null;
         job.lastRun = DateTime.now().toIso8601String();
         job.lastCount = entry?.count ?? 0;
-        if (entry != null) await _recordHistory(entry);
+        await store.saveSchedules(schedules);
         notifyListeners();
       } catch (e) {
         job.error = e.toString();
@@ -863,27 +1034,39 @@ class AppState extends ChangeNotifier {
     await _operations.run(() async {
       _setBusy(BusyKind.organizing);
       addLog('Moving ${files.length} files to Trash…');
+      JournalWriter? journal;
       try {
+        journal = await _startJournal(current, action: 'trash');
         final entry = await _organize.trash(
           current,
           files,
           _config(),
           log: (m) => addLog(m),
+          beforeMove: journal.intent,
+          afterMove: journal.done,
         );
         for (final move in files) {
           move.skipped = true;
         }
         await _recordHistory(entry);
+        await journal.commit();
+        journal = null;
         status = '${entry.count} files trashed';
         addLog(status);
         completion = CompletionMessage(
           title: 'Moved to Trash',
-          message: '${entry.count} files moved to the Trash folder. You can '
+          message:
+              '${entry.count} files moved to the Trash folder. You can '
               'undo this from History.',
           undoEntry: entry,
         );
         _setBusy(BusyKind.none);
+      } on OrganizeFailure catch (e) {
+        await _handleOrganizeFailure(e, journal);
+        journal = null;
+        _setBusy(BusyKind.none);
       } catch (e) {
+        await journal?.leaveForRecovery();
         error = e.toString();
         addLog('ERROR: $e');
         _setBusy(BusyKind.none);

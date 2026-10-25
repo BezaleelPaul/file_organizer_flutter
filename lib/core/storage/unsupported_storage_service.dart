@@ -26,14 +26,28 @@ class UnsupportedStorageService implements StorageService {
   Future<bool> directoryExists(String directory, String name) async => false;
 
   @override
-  Future<String> ensureDirectory(String directory, String name) async => throw UnsupportedError('File access is not available on this platform.');
+  Future<bool> fileExists(String directory, String name) async => false;
 
   @override
-  Future<void> moveFile(String srcDir, String srcName, String destDir, String destName) async =>
+  Future<String> ensureDirectory(String directory, String name) async =>
       throw UnsupportedError('File access is not available on this platform.');
 
   @override
-  Future<void> copyFile(String srcDir, String srcName, String destDir, String destName) async =>
+  Future<void> moveFile(
+    String srcDir,
+    String srcName,
+    String destDir,
+    String destName,
+  ) async =>
+      throw UnsupportedError('File access is not available on this platform.');
+
+  @override
+  Future<void> copyFile(
+    String srcDir,
+    String srcName,
+    String destDir,
+    String destName,
+  ) async =>
       throw UnsupportedError('File access is not available on this platform.');
 
   @override
@@ -44,8 +58,11 @@ class UnsupportedStorageService implements StorageService {
   Future<String?> fileHash(String directory, String name) async => null;
 
   @override
-  Future<Uint8List?> readHead(String directory, String name, int length) async =>
-      null;
+  Future<Uint8List?> readHead(
+    String directory,
+    String name,
+    int length,
+  ) async => null;
 
   @override
   Future<bool> removeEmptyDirectory(String directory) async => false;

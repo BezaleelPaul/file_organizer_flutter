@@ -26,6 +26,9 @@ abstract class StorageService {
   /// Whether a sub-directory named [name] exists inside [directory].
   Future<bool> directoryExists(String directory, String name);
 
+  /// Whether a file named [name] exists inside [directory].
+  Future<bool> fileExists(String directory, String name);
+
   /// The handle for a child directory named [name] (creates it if needed).
   Future<String> ensureDirectory(String directory, String name);
 
@@ -34,10 +37,20 @@ abstract class StorageService {
   bool get caseInsensitiveNames => false;
 
   /// Move [srcName] from [srcDir] into [destDir] as [destName].
-  Future<void> moveFile(String srcDir, String srcName, String destDir, String destName);
+  Future<void> moveFile(
+    String srcDir,
+    String srcName,
+    String destDir,
+    String destName,
+  );
 
   /// Copy [srcName] from [srcDir] into [destDir] as [destName].
-  Future<void> copyFile(String srcDir, String srcName, String destDir, String destName);
+  Future<void> copyFile(
+    String srcDir,
+    String srcName,
+    String destDir,
+    String destName,
+  );
 
   /// Delete [name] inside [directory].
   Future<void> deleteFile(String directory, String name);

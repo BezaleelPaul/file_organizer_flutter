@@ -65,7 +65,15 @@ class PatternRule {
   final String category;
   bool enabled;
 
-  RegExp get regex => RegExp(pattern);
+  RegExp get regex {
+    var p = pattern;
+    var caseSensitive = true;
+    if (p.startsWith('(?i)')) {
+      p = p.substring(4);
+      caseSensitive = false;
+    }
+    return RegExp(p, caseSensitive: caseSensitive);
+  }
 
   Map<String, dynamic> toJson() => {
         'pattern': pattern,

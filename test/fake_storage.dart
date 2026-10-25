@@ -11,6 +11,12 @@ class FakeStorage implements StorageService {
   final Set<String> realDirs = {};
   final Map<String, Uint8List> heads = {};
 
+  /// Source names that should throw when moved or copied, to simulate a
+  /// mid-run I/O failure.
+  final Set<String> failingNames = {};
+
+  void failOn(String name) => failingNames.add(name);
+
   /// Seed the first bytes returned by [readHead] for a file.
   void seedHead(String dir, String name, List<int> bytes) {
     heads['$dir/$name'] = Uint8List.fromList(bytes);
@@ -33,12 +39,14 @@ class FakeStorage implements StorageService {
   /// (size, content hash). Files with the same name hash identically.
   void seedWithSize(String dir, String name, int size) {
     dirs[dir] ??= [];
-    dirs[dir]!.add(FileEntry(
-      name: name,
-      size: size,
-      isDirectory: false,
-      modified: DateTime(2026, 8, 1),
-    ));
+    dirs[dir]!.add(
+      FileEntry(
+        name: name,
+        size: size,
+        isDirectory: false,
+        modified: DateTime(2026, 8, 1),
+      ),
+    );
     realDirs.add(dir);
   }
 
@@ -79,6 +87,11 @@ class FakeStorage implements StorageService {
   }
 
   @override
+  Future<bool> fileExists(String directory, String name) async {
+    return dirs[directory]?.any((e) => e.name == name) ?? false;
+  }
+
+  @override
   Future<String> ensureDirectory(String directory, String name) async {
     final child = '$directory/$name';
     realDirs.add(child);
@@ -88,29 +101,47 @@ class FakeStorage implements StorageService {
 
   @override
   Future<void> moveFile(
-      String srcDir, String srcName, String destDir, String destName) async {
+    String srcDir,
+    String srcName,
+    String destDir,
+    String destName,
+  ) async {
+    if (failingNames.contains(srcName)) {
+      throw StateError('Simulated move failure for $srcName');
+    }
     final src = dirs[srcDir]!.firstWhere((e) => e.name == srcName);
     dirs[srcDir]!.remove(src);
     dirs.putIfAbsent(destDir, () => <FileEntry>[]);
-    dirs[destDir]!.add(FileEntry(
-      name: destName,
-      size: src.size,
-      isDirectory: false,
-      modified: src.modified,
-    ));
+    dirs[destDir]!.add(
+      FileEntry(
+        name: destName,
+        size: src.size,
+        isDirectory: false,
+        modified: src.modified,
+      ),
+    );
   }
 
   @override
   Future<void> copyFile(
-      String srcDir, String srcName, String destDir, String destName) async {
+    String srcDir,
+    String srcName,
+    String destDir,
+    String destName,
+  ) async {
+    if (failingNames.contains(srcName)) {
+      throw StateError('Simulated copy failure for $srcName');
+    }
     final src = dirs[srcDir]!.firstWhere((e) => e.name == srcName);
     dirs.putIfAbsent(destDir, () => <FileEntry>[]);
-    dirs[destDir]!.add(FileEntry(
-      name: destName,
-      size: src.size,
-      isDirectory: false,
-      modified: src.modified,
-    ));
+    dirs[destDir]!.add(
+      FileEntry(
+        name: destName,
+        size: src.size,
+        isDirectory: false,
+        modified: src.modified,
+      ),
+    );
   }
 
   @override

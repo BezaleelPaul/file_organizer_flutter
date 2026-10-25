@@ -9,6 +9,50 @@ import 'package:file_organizer/core/models.dart';
 import 'package:file_organizer/core/rules.dart';
 import 'package:file_organizer/core/storage/storage_service.dart';
 
+/// Thrown when an organize/trash run fails.
+///
+/// [entry] contains every move that completed before the failure. When
+/// [rolledBack] is true those moves were already reversed and the folder is
+/// unchanged; when false they still exist on disk and must be recorded so the
+/// user can undo them.
+class OrganizeFailure implements Exception {
+  const OrganizeFailure(
+    this.cause,
+    this.entry, {
+    required this.rolledBack,
+    this.rollbackError,
+  });
+
+  final Object cause;
+  final HistoryEntry entry;
+  final bool rolledBack;
+  final Object? rollbackError;
+
+  @override
+  String toString() {
+    if (rolledBack) {
+      return 'Organize failed and all completed moves were rolled back: $cause';
+    }
+    final detail = rollbackError == null
+        ? ''
+        : ' Rollback also failed: $rollbackError';
+    return 'Organize failed after ${entry.count} completed '
+        '${entry.count == 1 ? 'move' : 'moves'}: $cause.$detail';
+  }
+}
+
+/// Thrown when an undo could not reverse every selected move.
+class UndoFailure implements Exception {
+  const UndoFailure(this.failures);
+
+  final List<String> failures;
+
+  @override
+  String toString() =>
+      'Could not undo ${failures.length} ${failures.length == 1 ? 'file' : 'files'}: '
+      '${failures.join('; ')}';
+}
+
 class Organizer {
   Organizer({
     required this.storage,
@@ -95,21 +139,32 @@ class Organizer {
           break;
         }
       }
-      if (allowedCategories.isNotEmpty && !allowedCategories.contains(category)) {
+      if (allowedCategories.isNotEmpty &&
+          !allowedCategories.contains(category)) {
         category = 'Others';
       }
       final parts = <String>[category];
       if (byDate && category != 'Others') {
         final sub = dateSubfolder(entry.modified, template: dateTemplate);
-        if (sub.isNotEmpty) parts.add(sub);
+        if (sub.isNotEmpty) parts.addAll(splitTemplatePath(sub));
       }
-      files.add(PlannedMove(
-        name: name,
-        size: entry.size,
-        category: category,
-        destination: parts.join('/'),
-        modified: entry.modified,
-      ));
+      for (final part in parts) {
+        if (!isSafePathSegment(part)) {
+          throw FormatException(
+            'Invalid folder name "$part" for "$name". Category and date '
+            'templates must produce portable folder names.',
+          );
+        }
+      }
+      files.add(
+        PlannedMove(
+          name: name,
+          size: entry.size,
+          category: category,
+          destination: parts.join('/'),
+          modified: entry.modified,
+        ),
+      );
     }
     if (detectDuplicates) {
       await _markDuplicates(files);
@@ -146,11 +201,21 @@ class Organizer {
   /// their destination when [duplicatesToTrash] is true; otherwise they are
   /// organized like every other file (callers normally skip them first).
   /// [progress] is called with (done, total) after each file.
+  ///
+  /// [beforeMove] runs before each rename/copy and [afterMove] immediately
+  /// after it succeeds. Callers use these to write a crash-safe journal. When
+  /// the run fails, completed moves are rolled back by default so the folder
+  /// is never left half-organized; if rollback also fails the partial entry is
+  /// returned inside [OrganizeFailure] so it can still be recorded and undone.
   Future<HistoryEntry> execute(
     List<PlannedMove> moves, {
     required void Function(int done, int total) progress,
     void Function(String message)? log,
     bool duplicatesToTrash = false,
+    Future<void> Function(MoveRecord record)? beforeMove,
+    Future<void> Function(MoveRecord record)? afterMove,
+    Future<void> Function(String path)? onCreatedDir,
+    bool rollbackOnError = true,
   }) async {
     final total = moves.length;
     var done = 0;
@@ -159,23 +224,29 @@ class Organizer {
     final claimed = <String, Set<String>>{};
     final existingNames = <String, Set<String>>{};
     final ensuredDirs = <String, String>{};
+    final timestamp = DateTime.now().toIso8601String();
     var renameCounter = 0;
+
+    // Validate every destination before touching the disk. A bad category or
+    // date template must fail before the first file moves.
+    for (final move in moves) {
+      if (move.skipped) continue;
+      _segmentsFor(move);
+    }
 
     Future<Set<String>> namesFor(String destDir) async {
       var names = existingNames[destDir];
       if (names == null) {
-        names = (await storage.listDirectory(destDir))
-            .map((e) => e.name)
-            .toSet();
+        names = (await storage.listDirectory(
+          destDir,
+        )).map((e) => e.name).toSet();
         existingNames[destDir] = names;
       }
       return names;
     }
 
     Future<String> destDirFor(PlannedMove move) async {
-      final segments = move.effectiveCategory == move.category
-          ? move.destination.split('/')
-          : <String>[move.effectiveCategory];
+      final segments = _segmentsFor(move);
       var current = root;
       for (final segment in segments) {
         final existed = await storage.directoryExists(current, segment);
@@ -186,7 +257,10 @@ class Organizer {
           ensuredDirs[key] = dir;
         }
         current = dir;
-        if (!existed) createdDirs.add(current);
+        if (!existed) {
+          createdDirs.add(current);
+          await onCreatedDir?.call(current);
+        }
       }
       return current;
     }
@@ -194,19 +268,16 @@ class Organizer {
     Future<String> freeName(String destDir, String desired) async {
       final pool = await namesFor(destDir);
       claimed.putIfAbsent(destDir, () => <String>{});
-      final name = uniqueName(desired, {...pool, ...claimed[destDir]!},
-          caseInsensitive: storage.caseInsensitiveNames);
+      final name = uniqueName(desired, {
+        ...pool,
+        ...claimed[destDir]!,
+      }, caseInsensitive: storage.caseInsensitiveNames);
       pool.add(name);
       claimed[destDir]!.add(name);
       return name;
     }
 
-    for (final move in moves) {
-      if (move.skipped) {
-        done += 1;
-        progress(done, total);
-        continue;
-      }
+    Future<void> performMove(PlannedMove move) async {
       final destDir = await destDirFor(move);
       var destName = move.name;
       if (renameTemplate.isNotEmpty) {
@@ -223,44 +294,92 @@ class Organizer {
         );
         // Never strip the original extension unless the template already uses
         // {ext} explicitly.
-        if (!renameTemplate.contains('{ext}') && ext.isNotEmpty &&
+        if (!renameTemplate.contains('{ext}') &&
+            ext.isNotEmpty &&
             !rendered.endsWith(ext)) {
           rendered = '$rendered$ext';
         }
-        destName = rendered;
+        final safe = sanitizeFileName(rendered);
+        if (safe == null) {
+          log?.call(
+            'Rename template produced an invalid name for ${move.name}; '
+            'keeping the original name.',
+          );
+        } else {
+          destName = safe;
+        }
         renameCounter += 1;
       }
       destName = await freeName(destDir, destName);
       log?.call('${move.name} → $destName');
+
+      late final MoveRecord record;
       if (move.isDuplicate && duplicatesToTrash) {
         final trashDir = await _ensureTrash();
         final trashName = await freeName(trashDir, move.name);
-        await storage.moveFile(root, move.name, trashDir, trashName);
-        journal.add(MoveRecord(
+        record = MoveRecord(
           srcDir: root,
           srcName: move.name,
           destDir: trashDir,
           destName: trashName,
-        ));
+        );
+        await beforeMove?.call(record);
+        await storage.moveFile(root, move.name, trashDir, trashName);
       } else {
+        record = MoveRecord(
+          srcDir: root,
+          srcName: move.name,
+          destDir: destDir,
+          destName: destName,
+        );
+        await beforeMove?.call(record);
         if (copyInsteadOfMove) {
           await storage.copyFile(root, move.name, destDir, destName);
         } else {
           await storage.moveFile(root, move.name, destDir, destName);
         }
-        journal.add(MoveRecord(
-          srcDir: root,
-          srcName: move.name,
-          destDir: destDir,
-          destName: destName,
-        ));
       }
-      done += 1;
-      progress(done, total);
+      journal.add(record);
+      await afterMove?.call(record);
+    }
+
+    try {
+      for (final move in moves) {
+        if (move.skipped) {
+          done += 1;
+          progress(done, total);
+          continue;
+        }
+        await performMove(move);
+        done += 1;
+        progress(done, total);
+      }
+    } catch (e) {
+      final partial = HistoryEntry(
+        timestamp: timestamp,
+        action: copyInsteadOfMove ? 'copy' : 'move',
+        root: root,
+        createdDirs: List.of(createdDirs),
+        moves: List.of(journal),
+      );
+      if (!rollbackOnError || journal.isEmpty) {
+        throw OrganizeFailure(e, partial, rolledBack: journal.isEmpty);
+      }
+      try {
+        await undoSelected(partial, partial.moves);
+      } catch (rollbackError) {
+        throw OrganizeFailure(
+          e,
+          partial,
+          rolledBack: false,
+          rollbackError: rollbackError,
+        );
+      }
+      throw OrganizeFailure(e, _emptyEntry(partial), rolledBack: true);
     }
 
     return HistoryEntry(
-      timestamp: DateTime.now().toIso8601String(),
+      timestamp: timestamp,
       action: copyInsteadOfMove ? 'copy' : 'move',
       root: root,
       createdDirs: createdDirs,
@@ -268,32 +387,96 @@ class Organizer {
     );
   }
 
+  List<String> _segmentsFor(PlannedMove move) {
+    final rawSegments = move.effectiveCategory == move.category
+        ? move.destination.split('/')
+        : <String>[move.effectiveCategory];
+    final segments = <String>[];
+    for (final raw in rawSegments) {
+      final segment = raw.trim();
+      if (!isSafePathSegment(segment)) {
+        throw FormatException(
+          'Refusing to create "$segment" for "${move.name}": the category '
+          'must be a portable folder name and cannot contain "..", path '
+          'separators or Windows reserved names.',
+        );
+      }
+      segments.add(segment);
+    }
+    if (segments.isEmpty) {
+      throw FormatException('Empty destination for "${move.name}".');
+    }
+    return segments;
+  }
+
+  HistoryEntry _emptyEntry(HistoryEntry source) => HistoryEntry(
+    timestamp: source.timestamp,
+    action: source.action,
+    root: source.root,
+    createdDirs: const [],
+    moves: const [],
+  );
+
   /// Move [moves] into the reversible Trash folder inside the root.
   Future<HistoryEntry> trash(
     List<PlannedMove> moves, {
     void Function(String message)? log,
+    Future<void> Function(MoveRecord record)? beforeMove,
+    Future<void> Function(MoveRecord record)? afterMove,
+    bool rollbackOnError = true,
   }) async {
     final trashDir = await _ensureTrash();
     final journal = <MoveRecord>[];
     final claimed = <String>{};
-    final existing =
-        (await storage.listDirectory(trashDir)).map((e) => e.name).toSet();
-    for (final move in moves) {
-      final name = uniqueName(move.name, {...existing, ...claimed},
-          caseInsensitive: storage.caseInsensitiveNames);
-      existing.add(name);
-      claimed.add(name);
-      log?.call('${move.name} → Trash/$name');
-      await storage.moveFile(root, move.name, trashDir, name);
-      journal.add(MoveRecord(
-        srcDir: root,
-        srcName: move.name,
-        destDir: trashDir,
-        destName: name,
-      ));
+    final existing = (await storage.listDirectory(
+      trashDir,
+    )).map((e) => e.name).toSet();
+    final timestamp = DateTime.now().toIso8601String();
+    try {
+      for (final move in moves) {
+        final name = uniqueName(move.name, {
+          ...existing,
+          ...claimed,
+        }, caseInsensitive: storage.caseInsensitiveNames);
+        existing.add(name);
+        claimed.add(name);
+        log?.call('${move.name} → Trash/$name');
+        final record = MoveRecord(
+          srcDir: root,
+          srcName: move.name,
+          destDir: trashDir,
+          destName: name,
+        );
+        await beforeMove?.call(record);
+        await storage.moveFile(root, move.name, trashDir, name);
+        journal.add(record);
+        await afterMove?.call(record);
+      }
+    } catch (e) {
+      final partial = HistoryEntry(
+        timestamp: timestamp,
+        action: 'trash',
+        root: root,
+        createdDirs: const [],
+        moves: List.of(journal),
+      );
+      if (!rollbackOnError || journal.isEmpty) {
+        throw OrganizeFailure(e, partial, rolledBack: journal.isEmpty);
+      }
+      try {
+        await undoSelected(partial, partial.moves);
+      } catch (rollbackError) {
+        throw OrganizeFailure(
+          e,
+          partial,
+          rolledBack: false,
+          rollbackError: rollbackError,
+        );
+      }
+      throw OrganizeFailure(e, _emptyEntry(partial), rolledBack: true);
     }
     return HistoryEntry(
-      timestamp: DateTime.now().toIso8601String(),
+      timestamp: timestamp,
       action: 'trash',
       root: root,
       createdDirs: <String>[trashDir],
@@ -306,29 +489,67 @@ class Organizer {
   }
 
   /// Reverse an entire [HistoryEntry]: move every file back and remove empty dirs.
-  Future<void> undo(
-    HistoryEntry entry, {
-    void Function(String message)? log,
-  }) =>
+  Future<void> undo(HistoryEntry entry, {void Function(String message)? log}) =>
       undoSelected(entry, entry.moves, log: log);
 
   /// Selectively reverse only the specified [selectedMoves] from a [HistoryEntry].
+  ///
+  /// Copies are deleted rather than moved back (the original still exists).
+  /// Missing destinations are skipped so retrying an undo is safe. Every move
+  /// is attempted even if one fails; failures are reported together in
+  /// [UndoFailure] so the caller does not claim a partial undo succeeded.
   Future<void> undoSelected(
     HistoryEntry entry,
     List<MoveRecord> selectedMoves, {
     void Function(String message)? log,
   }) async {
+    final failures = <String>[];
     for (final record in selectedMoves.reversed) {
-      log?.call('Undo ${record.destName}');
-      await storage.moveFile(
-        record.destDir,
-        record.destName,
-        record.srcDir,
-        record.srcName,
-      );
+      final exists = await storage.fileExists(record.destDir, record.destName);
+      if (!exists) {
+        log?.call('Skip ${record.destName}: already restored or removed.');
+        continue;
+      }
+      try {
+        if (entry.action == 'copy') {
+          await storage.deleteFile(record.destDir, record.destName);
+          log?.call('Removed copy ${record.destName}');
+          continue;
+        }
+        var restoreName = record.srcName;
+        if (await storage.fileExists(record.srcDir, record.srcName)) {
+          final existing = (await storage.listDirectory(
+            record.srcDir,
+          )).map((e) => e.name).toSet();
+          restoreName = uniqueName(
+            record.srcName,
+            existing,
+            caseInsensitive: storage.caseInsensitiveNames,
+          );
+          log?.call(
+            'Original name "${record.srcName}" is occupied; restoring as '
+            '"$restoreName".',
+          );
+        }
+        await storage.moveFile(
+          record.destDir,
+          record.destName,
+          record.srcDir,
+          restoreName,
+        );
+      } catch (e) {
+        failures.add('${record.destName}: $e');
+      }
     }
     for (final dir in entry.createdDirs.reversed) {
-      await storage.removeEmptyDirectory(dir);
+      try {
+        await storage.removeEmptyDirectory(dir);
+      } catch (_) {
+        // A non-empty folder is expected when other files live there.
+      }
+    }
+    if (failures.isNotEmpty) {
+      throw UndoFailure(failures);
     }
   }
 }

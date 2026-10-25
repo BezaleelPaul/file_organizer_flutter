@@ -32,8 +32,12 @@ class SettingsStore {
     try {
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
       return normalizeCategories(
-        decoded.map((k, v) => MapEntry(
-            k, (v as List<dynamic>).map((e) => e.toString()).toList())),
+        decoded.map(
+          (k, v) => MapEntry(
+            k,
+            (v as List<dynamic>).map((e) => e.toString()).toList(),
+          ),
+        ),
       );
     } catch (_) {
       return normalizeCategories(defaultCategories);
@@ -63,12 +67,12 @@ class SettingsStore {
   }
 
   String _prefKey(String key) => switch (key) {
-        'byExtension' => 'by_extension',
-        'bySize' => 'by_size',
-        'byDate' => 'by_date',
-        'copyInsteadOfMove' => 'copy',
-        _ => key,
-      };
+    'byExtension' => 'by_extension',
+    'bySize' => 'by_size',
+    'byDate' => 'by_date',
+    'copyInsteadOfMove' => 'copy',
+    _ => key,
+  };
 
   Future<void> saveLastRoot(String? root) async {
     final prefs = await SharedPreferences.getInstance();
@@ -117,6 +121,14 @@ class SettingsStore {
     await _historyStore.markRolledBack(entry);
   }
 
+  Future<JournalWriter> startJournal({
+    required String action,
+    required String root,
+  }) => _historyStore.startJournal(action: action, root: root);
+
+  Future<List<HistoryEntry>> recoverInFlight() =>
+      _historyStore.recoverInFlight();
+
   Future<List<WatchJob>> loadWatches() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_keyWatches);
@@ -134,7 +146,9 @@ class SettingsStore {
   Future<void> saveWatches(List<WatchJob> watches) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        _keyWatches, jsonEncode(watches.map((e) => e.toJson()).toList()));
+      _keyWatches,
+      jsonEncode(watches.map((e) => e.toJson()).toList()),
+    );
   }
 
   Future<List<ScheduleJob>> loadSchedules() async {
@@ -154,7 +168,9 @@ class SettingsStore {
   Future<void> saveSchedules(List<ScheduleJob> schedules) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        _keySchedules, jsonEncode(schedules.map((e) => e.toJson()).toList()));
+      _keySchedules,
+      jsonEncode(schedules.map((e) => e.toJson()).toList()),
+    );
   }
 
   Future<List<PatternRule>> loadPatternRules() async {
@@ -174,7 +190,9 @@ class SettingsStore {
   Future<void> savePatternRules(List<PatternRule> rules) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        _keyPatternRules, jsonEncode(rules.map((e) => e.toJson()).toList()));
+      _keyPatternRules,
+      jsonEncode(rules.map((e) => e.toJson()).toList()),
+    );
   }
 
   Future<List<AutoRule>> loadAutoRules() async {
@@ -194,7 +212,9 @@ class SettingsStore {
   Future<void> saveAutoRules(List<AutoRule> rules) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        _keyAutoRules, jsonEncode(rules.map((e) => e.toJson()).toList()));
+      _keyAutoRules,
+      jsonEncode(rules.map((e) => e.toJson()).toList()),
+    );
   }
 
   Future<List<Tag>> loadTags() async {
@@ -214,7 +234,9 @@ class SettingsStore {
   Future<void> saveTags(List<Tag> tags) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        _keyTags, jsonEncode(tags.map((e) => e.toJson()).toList()));
+      _keyTags,
+      jsonEncode(tags.map((e) => e.toJson()).toList()),
+    );
   }
 
   Future<Map<String, List<String>>> loadFileTags() async {
@@ -223,8 +245,12 @@ class SettingsStore {
     if (raw == null) return {};
     try {
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
-      return decoded.map((path, names) => MapEntry(
-          path, (names as List<dynamic>).map((e) => e.toString()).toList()));
+      return decoded.map(
+        (path, names) => MapEntry(
+          path,
+          (names as List<dynamic>).map((e) => e.toString()).toList(),
+        ),
+      );
     } catch (_) {
       return {};
     }
@@ -251,8 +277,10 @@ class SettingsStore {
 
   Future<void> saveCollections(List<SmartCollection> collections) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyCollections,
-        jsonEncode(collections.map((e) => e.toJson()).toList()));
+    await prefs.setString(
+      _keyCollections,
+      jsonEncode(collections.map((e) => e.toJson()).toList()),
+    );
   }
 
   Future<List<String>> loadExcludes() async {

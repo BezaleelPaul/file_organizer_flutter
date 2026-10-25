@@ -76,14 +76,24 @@ class _RulesScreenState extends State<RulesScreen> {
       );
       return;
     }
+    if (!isSafePathSegment(name)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Category names cannot contain path separators, "..", or '
+            'Windows reserved names.',
+          ),
+        ),
+      );
+      return;
+    }
     widget.state.setCategories({...widget.state.categories, name: <String>[]});
     _newName.clear();
   }
 
   void _removeCategory(String name) {
     if (name == 'Others') return;
-    widget.state.setCategories(
-        {...widget.state.categories}..remove(name));
+    widget.state.setCategories({...widget.state.categories}..remove(name));
   }
 
   void _reset() {
@@ -96,12 +106,20 @@ class _RulesScreenState extends State<RulesScreen> {
         ? 'Others'
         : _newRuleCategory.text.trim();
     if (pattern.isEmpty) return;
+    if (!isSafePathSegment(category)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('That category name is not a safe folder name.'),
+        ),
+      );
+      return;
+    }
     try {
       RegExp(pattern);
     } on FormatException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invalid pattern: ${e.message}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Invalid pattern: ${e.message}')));
       return;
     }
     widget.state.setPatternRules([
@@ -113,8 +131,9 @@ class _RulesScreenState extends State<RulesScreen> {
   }
 
   void _removePatternRule(PatternRule rule) {
-    widget.state
-        .setPatternRules(widget.state.patternRules.where((r) => r != rule).toList());
+    widget.state.setPatternRules(
+      widget.state.patternRules.where((r) => r != rule).toList(),
+    );
   }
 
   void _addExclude() {
@@ -126,7 +145,8 @@ class _RulesScreenState extends State<RulesScreen> {
 
   void _removeExclude(String pattern) {
     widget.state.setExcludePatterns(
-        widget.state.excludePatterns.where((e) => e != pattern).toList());
+      widget.state.excludePatterns.where((e) => e != pattern).toList(),
+    );
   }
 
   @override
@@ -136,7 +156,9 @@ class _RulesScreenState extends State<RulesScreen> {
     // Ensure a controller exists for every category.
     categories.forEach((name, _) {
       _extControllers.putIfAbsent(
-          name, () => TextEditingController(text: categories[name]!.join(', ')));
+        name,
+        () => TextEditingController(text: categories[name]!.join(', ')),
+      );
     });
 
     return Scaffold(
@@ -171,35 +193,34 @@ class _RulesScreenState extends State<RulesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('How to sort',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    'How to sort',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   _FlagSwitch(
                     title: 'By extension',
-                    subtitle: 'Sort files into their type folder (e.g. .jpg → Images)',
+                    subtitle:
+                        'Sort files into their type folder (e.g. .jpg → Images)',
                     icon: Icons.extension_outlined,
                     value: widget.state.byExtension,
-                    onChanged: (v) => widget.state
-                        .setFlags(byExtension: v),
+                    onChanged: (v) => widget.state.setFlags(byExtension: v),
                   ),
                   _FlagSwitch(
                     title: 'By size',
                     subtitle: 'Small (<1 MB) / Medium (<100 MB) / Large',
                     icon: Icons.straighten_outlined,
                     value: widget.state.bySize,
-                    onChanged: (v) =>
-                        widget.state.setFlags(bySize: v),
+                    onChanged: (v) => widget.state.setFlags(bySize: v),
                   ),
                   _FlagSwitch(
                     title: 'By date',
                     subtitle: 'Sub-folder per month like 2026-08',
                     icon: Icons.calendar_month_outlined,
                     value: widget.state.byDate,
-                    onChanged: (v) =>
-                        widget.state.setFlags(byDate: v),
+                    onChanged: (v) => widget.state.setFlags(byDate: v),
                   ),
                   _FlagSwitch(
                     title: 'Copy instead of move',
@@ -212,7 +233,8 @@ class _RulesScreenState extends State<RulesScreen> {
                   const Divider(height: 24),
                   _FlagSwitch(
                     title: 'Detect duplicates',
-                    subtitle: 'Flag files that are byte-identical so you can skip them',
+                    subtitle:
+                        'Flag files that are byte-identical so you can skip them',
                     icon: Icons.content_copy_outlined,
                     value: widget.state.detectDuplicates,
                     onChanged: (v) =>
@@ -226,12 +248,15 @@ class _RulesScreenState extends State<RulesScreen> {
                       hintText: '{name}_{category}_{year}-{month}-{day}',
                       helperText:
                           'Tokens: {name} {ext} {category} {year} {month} {day} {counter}',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                     ),
-                    onSubmitted: (_) => widget.state
-                        .setRenameTemplate(_renameTemplate.text),
-                    onChanged: (_) => widget.state
-                        .setRenameTemplate(_renameTemplate.text),
+                    onSubmitted: (_) =>
+                        widget.state.setRenameTemplate(_renameTemplate.text),
+                    onChanged: (_) =>
+                        widget.state.setRenameTemplate(_renameTemplate.text),
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -240,7 +265,10 @@ class _RulesScreenState extends State<RulesScreen> {
                       labelText: 'Date sub-folder template',
                       hintText: '{year}-{month}  or  {year}/{month}/{day}',
                       helperText: 'Used when "By date" is enabled',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                     ),
                     onSubmitted: (_) =>
                         widget.state.setDateTemplate(_dateTemplate.text),
@@ -258,11 +286,12 @@ class _RulesScreenState extends State<RulesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Name pattern rules',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    'Name pattern rules',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     'Regex rules that route files to a folder by their name, '
@@ -278,7 +307,10 @@ class _RulesScreenState extends State<RulesScreen> {
                           controller: _newPattern,
                           decoration: const InputDecoration(
                             hintText: 'Regex, e.g. ^IMG_',
-                            contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
                           ),
                           onSubmitted: (_) => _addPatternRule(),
                         ),
@@ -290,7 +322,10 @@ class _RulesScreenState extends State<RulesScreen> {
                           controller: _newRuleCategory,
                           decoration: const InputDecoration(
                             hintText: 'Folder',
-                            contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
                           ),
                           onSubmitted: (_) => _addPatternRule(),
                         ),
@@ -307,8 +342,10 @@ class _RulesScreenState extends State<RulesScreen> {
                   if (widget.state.patternRules.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text('No pattern rules yet.',
-                          style: TextStyle(color: scheme.onSurfaceVariant)),
+                      child: Text(
+                        'No pattern rules yet.',
+                        style: TextStyle(color: scheme.onSurfaceVariant),
+                      ),
                     )
                   else
                     for (final rule in widget.state.patternRules)
@@ -319,12 +356,18 @@ class _RulesScreenState extends State<RulesScreen> {
                           value: rule.enabled,
                           onChanged: (v) {
                             rule.enabled = v;
-                            widget.state.setPatternRules(widget.state.patternRules);
+                            widget.state.setPatternRules(
+                              widget.state.patternRules,
+                            );
                           },
                         ),
                         title: Text(
-                            '${rule.pattern}  →  ${rule.category}',
-                            style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+                          '${rule.pattern}  →  ${rule.category}',
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                          ),
+                        ),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete_outline),
                           onPressed: () => _removePatternRule(rule),
@@ -341,11 +384,12 @@ class _RulesScreenState extends State<RulesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Excluded files',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    'Excluded files',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     r'Regex patterns for files that should never be organized '
@@ -360,7 +404,10 @@ class _RulesScreenState extends State<RulesScreen> {
                           controller: _newExclude,
                           decoration: const InputDecoration(
                             hintText: r'Regex, e.g. \.tmp$',
-                            contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
                           ),
                           onSubmitted: (_) => _addExclude(),
                         ),
@@ -377,8 +424,10 @@ class _RulesScreenState extends State<RulesScreen> {
                   if (widget.state.excludePatterns.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text('Nothing excluded.',
-                          style: TextStyle(color: scheme.onSurfaceVariant)),
+                      child: Text(
+                        'Nothing excluded.',
+                        style: TextStyle(color: scheme.onSurfaceVariant),
+                      ),
                     )
                   else
                     Wrap(
@@ -387,8 +436,10 @@ class _RulesScreenState extends State<RulesScreen> {
                       children: [
                         for (final pattern in widget.state.excludePatterns)
                           Chip(
-                            label: Text(pattern,
-                                style: const TextStyle(fontFamily: 'monospace')),
+                            label: Text(
+                              pattern,
+                              style: const TextStyle(fontFamily: 'monospace'),
+                            ),
                             onDeleted: () => _removeExclude(pattern),
                           ),
                       ],
@@ -401,11 +452,12 @@ class _RulesScreenState extends State<RulesScreen> {
           Row(
             children: [
               Expanded(
-                child: Text('Category folders',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
+                child: Text(
+                  'Category folders',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               IconButton(
                 tooltip: 'Add category',
@@ -420,13 +472,18 @@ class _RulesScreenState extends State<RulesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Allowed folders',
-                      style: TextStyle(color: scheme.onSurfaceVariant)),
+                  Text(
+                    'Allowed folders',
+                    style: TextStyle(color: scheme.onSurfaceVariant),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     'Turn off folders you never want created. Files that would '
                     'go there are sent to Others instead.',
-                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -436,7 +493,8 @@ class _RulesScreenState extends State<RulesScreen> {
                       for (final category in categories.keys)
                         FilterChip(
                           label: Text(category),
-                          selected: widget.state.allowedCategories.isEmpty ||
+                          selected:
+                              widget.state.allowedCategories.isEmpty ||
                               widget.state.allowedCategories.contains(category),
                           onSelected: (selected) {
                             final allowed = {...widget.state.allowedCategories};
@@ -462,7 +520,10 @@ class _RulesScreenState extends State<RulesScreen> {
                   controller: _newName,
                   decoration: const InputDecoration(
                     hintText: 'New category name…',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                   ),
                   onSubmitted: (_) => _addCategory(),
                 ),
@@ -560,11 +621,15 @@ class _CategoryRowState extends State<_CategoryRow> {
     final scheme = Theme.of(context).colorScheme;
     return ExpansionTile(
       leading: Icon(Icons.folder_outlined, color: scheme.primary),
-      title: Text(widget.name,
-          style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(widget.extensions.isEmpty
-          ? 'No extensions yet'
-          : widget.extensions.take(6).join(', ')),
+      title: Text(
+        widget.name,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        widget.extensions.isEmpty
+            ? 'No extensions yet'
+            : widget.extensions.take(6).join(', '),
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -583,15 +648,19 @@ class _CategoryRowState extends State<_CategoryRow> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Extensions (comma separated)',
-                  style: TextStyle(color: scheme.onSurfaceVariant)),
+              Text(
+                'Extensions (comma separated)',
+                style: TextStyle(color: scheme.onSurfaceVariant),
+              ),
               const SizedBox(height: 8),
               TextField(
                 controller: widget.controller,
                 decoration: InputDecoration(
                   hintText: '.pdf, .docx, .txt',
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                 ),
                 onSubmitted: (_) => widget.onCommit(),
               ),

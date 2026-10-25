@@ -92,11 +92,17 @@ class OrganizeService {
     OrganizeConfig config, {
     void Function(int done, int total)? progress,
     void Function(String message)? log,
+    Future<void> Function(MoveRecord record)? beforeMove,
+    Future<void> Function(MoveRecord record)? afterMove,
+    Future<void> Function(String path)? onCreatedDir,
   }) =>
       _organizerFor(root, config).execute(
         plan,
         progress: progress ?? (_, _) {},
         log: log,
+        beforeMove: beforeMove,
+        afterMove: afterMove,
+        onCreatedDir: onCreatedDir,
       );
 
   /// Run the full pipeline for [root]: scan, filter out skipped files and
@@ -107,6 +113,9 @@ class OrganizeService {
     OrganizeConfig config, {
     bool skipDuplicates = true,
     void Function(String message)? log,
+    Future<void> Function(MoveRecord record)? beforeMove,
+    Future<void> Function(MoveRecord record)? afterMove,
+    Future<void> Function(String path)? onCreatedDir,
   }) async {
     final organizer = _organizerFor(root, config);
     final plan = await organizer.scan();
@@ -119,6 +128,9 @@ class OrganizeService {
       actionable,
       progress: (_, _) {},
       log: log,
+      beforeMove: beforeMove,
+      afterMove: afterMove,
+      onCreatedDir: onCreatedDir,
     );
     return OrganizeResult(entry: entry);
   }
@@ -129,8 +141,15 @@ class OrganizeService {
     List<PlannedMove> moves,
     OrganizeConfig config, {
     void Function(String message)? log,
+    Future<void> Function(MoveRecord record)? beforeMove,
+    Future<void> Function(MoveRecord record)? afterMove,
   }) =>
-      _organizerFor(root, config).trash(moves, log: log);
+      _organizerFor(root, config).trash(
+        moves,
+        log: log,
+        beforeMove: beforeMove,
+        afterMove: afterMove,
+      );
 
   /// Reverse a journal entry and remove folders that became empty.
   Future<void> undo(

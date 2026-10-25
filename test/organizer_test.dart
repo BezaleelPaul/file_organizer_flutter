@@ -1,3 +1,4 @@
+import 'package:file_organizer/core/models.dart';
 import 'package:file_organizer/core/organizer.dart';
 import 'package:file_organizer/core/rules.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,8 +22,7 @@ void main() {
 
       final result = await organizer.scan();
       expect(result.files, hasLength(3));
-      final photo =
-          result.files.firstWhere((f) => f.name == 'photo.jpg');
+      final photo = result.files.firstWhere((f) => f.name == 'photo.jpg');
       expect(photo.category, 'Images');
       expect(photo.destination, 'Images/2026-08');
     });
@@ -41,10 +41,7 @@ void main() {
       );
 
       final plan = await organizer.scan();
-      final journal = await organizer.execute(
-        plan.files,
-        progress: (_, _) {},
-      );
+      final journal = await organizer.execute(plan.files, progress: (_, _) {});
 
       expect(journal.count, 3);
       expect(storage.dirs['/dl'], isEmpty);
@@ -163,6 +160,157 @@ void main() {
 
       expect(journal.action, 'copy');
       expect(storage.dirs['/dl'], hasLength(1));
+      expect(storage.dirs['/dl/Images'], hasLength(1));
+    });
+
+    test('failed execute rolls back moves that already completed', () async {
+      final storage = FakeStorage();
+      storage.seed('/dl', ['a.png', 'b.png']);
+      storage.failOn('b.png');
+
+      final organizer = Organizer(
+        storage: storage,
+        root: '/dl',
+        categories: defaultCategories,
+        byExtension: true,
+        bySize: false,
+        byDate: false,
+      );
+
+      final plan = await organizer.scan();
+      final intents = <MoveRecord>[];
+      final done = <MoveRecord>[];
+
+      await expectLater(
+        organizer.execute(
+          plan.files,
+          progress: (_, _) {},
+          beforeMove: (record) async => intents.add(record),
+          afterMove: (record) async => done.add(record),
+        ),
+        throwsA(
+          isA<OrganizeFailure>()
+              .having((e) => e.rolledBack, 'rolledBack', isTrue)
+              .having((e) => e.entry.moves, 'entry.moves', isEmpty),
+        ),
+      );
+
+      expect(intents, hasLength(2));
+      expect(done, hasLength(1));
+      expect(
+        storage.dirs['/dl']!.map((e) => e.name),
+        containsAll(['a.png', 'b.png']),
+      );
+      expect(storage.dirs.containsKey('/dl/Images'), isFalse);
+    });
+
+    test('undo of a copy deletes the copy instead of renaming it', () async {
+      final storage = FakeStorage();
+      storage.seed('/dl', ['a.png']);
+
+      final organizer = Organizer(
+        storage: storage,
+        root: '/dl',
+        categories: defaultCategories,
+        byExtension: true,
+        bySize: false,
+        byDate: false,
+        copyInsteadOfMove: true,
+      );
+
+      final plan = await organizer.scan();
+      final journal = await organizer.execute(plan.files, progress: (_, _) {});
+      expect(storage.dirs['/dl/Images'], hasLength(1));
+
+      await organizer.undo(journal);
+
+      expect(storage.dirs['/dl']!.single.name, 'a.png');
+      expect(storage.dirs.containsKey('/dl/Images'), isFalse);
+    });
+
+    test(
+      'traversal in an override category is rejected before any move',
+      () async {
+        final storage = FakeStorage();
+        storage.seed('/dl', ['a.png']);
+
+        final organizer = Organizer(
+          storage: storage,
+          root: '/dl',
+          categories: defaultCategories,
+          byExtension: true,
+          bySize: false,
+          byDate: false,
+        );
+
+        final plan = await organizer.scan();
+        plan.files.single.overrideCategory = '../evil';
+
+        await expectLater(
+          organizer.execute(plan.files, progress: (_, _) {}),
+          throwsA(isA<FormatException>()),
+        );
+        expect(storage.dirs['/dl']!.single.name, 'a.png');
+      },
+    );
+
+    test('traversal in the date template is rejected during scan', () async {
+      final storage = FakeStorage();
+      storage.seed('/dl', ['a.png']);
+
+      final organizer = Organizer(
+        storage: storage,
+        root: '/dl',
+        categories: defaultCategories,
+        byExtension: true,
+        byDate: true,
+        dateTemplate: '../{year}',
+      );
+
+      await expectLater(organizer.scan(), throwsA(isA<FormatException>()));
+    });
+
+    test('undo restores to a free name instead of overwriting', () async {
+      final storage = FakeStorage();
+      storage.seed('/dl', ['a.png']);
+
+      final organizer = Organizer(
+        storage: storage,
+        root: '/dl',
+        categories: defaultCategories,
+        byExtension: true,
+        bySize: false,
+        byDate: false,
+      );
+
+      final plan = await organizer.scan();
+      final journal = await organizer.execute(plan.files, progress: (_, _) {});
+      storage.seed('/dl', ['a.png']);
+
+      await organizer.undo(journal);
+
+      final names = storage.dirs['/dl']!.map((e) => e.name).toList();
+      expect(names, containsAll(['a.png', 'a (1).png']));
+    });
+
+    test('undo reports failures and leaves the file in place', () async {
+      final storage = FakeStorage();
+      storage.seed('/dl', ['a.png']);
+
+      final organizer = Organizer(
+        storage: storage,
+        root: '/dl',
+        categories: defaultCategories,
+        byExtension: true,
+        bySize: false,
+        byDate: false,
+      );
+
+      final plan = await organizer.scan();
+      final journal = await organizer.execute(plan.files, progress: (_, _) {});
+      storage.failOn('a.png');
+
+      await expectLater(organizer.undo(journal), throwsA(isA<UndoFailure>()));
       expect(storage.dirs['/dl/Images'], hasLength(1));
     });
 

@@ -15,8 +15,9 @@
   <a href="https://github.com/BezaleelPaul/file_organizer_flutter/releases/latest"><img src="https://img.shields.io/github/v/release/BezaleelPaul/file_organizer_flutter?style=for-the-badge&logo=github&color=6366f1" alt="Latest Release"></a>
   <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.41-02569B?style=for-the-badge&logo=flutter" alt="Flutter"></a>
   <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.11+-0175C2?style=for-the-badge&logo=dart" alt="Dart"></a>
-  <img src="https://img.shields.io/badge/Tests-94%20Passing-10b981?style=for-the-badge" alt="Tests">
-  <img src="https://img.shields.io/badge/Privacy-100%25%20Offline-f59e0b?style=for-the-badge" alt="Privacy">
+  <a href="https://github.com/BezaleelPaul/file_organizer_flutter/actions/workflows/ci.yml"><img src="https://github.com/BezaleelPaul/file_organizer_flutter/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Tests-108%20Passing-10b981?style=for-the-badge" alt="Tests">
+  <img src="https://img.shields.io/badge/Privacy-Local--First-f59e0b?style=for-the-badge" alt="Privacy">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License"></a>
 </p>
 
@@ -25,9 +26,10 @@
   <a href="#-why-mise">Why Mise</a> &bull;
   <a href="#-core-features">Features</a> &bull;
   <a href="#-how-it-works">How It Works</a> &bull;
+  <a href="#-performance-measured-not-estimated">Performance</a> &bull;
   <a href="#-command-line-interface-cli">CLI</a> &bull;
   <a href="#-search-syntax-cheat-sheet">Query Syntax</a> &bull;
-  <a href="#-comparison">Comparison</a> &bull;
+  <a href="#-where-mise-fits-honest-comparison">Comparison</a> &bull;
   <a href="#-development--building">Build</a> &bull;
   <a href="#-share--spread-the-word">Share</a>
 </p>
@@ -40,13 +42,13 @@ Download ready-to-run release binaries for your operating system:
 
 | Platform | Format | Download Link | Notes |
 |:---|:---|:---|:---|
-| **Windows** | Setup `.exe` | [**Download Installer**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-setup-2.2.0.exe) | Inno Setup installer with start menu & desktop shortcuts |
-| **Windows** | Portable `.zip` | [**Download ZIP**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-windows.zip) | Portable release — extract and run anywhere |
-| **Linux** | Debian / Ubuntu `.deb` | [**Download .deb**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise_2.2.0_amd64.deb) | Desktop integration, icons, and binary symlink |
-| **Linux** | Standalone AppImage | [**Download AppImage**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/Mise-2.2.0-x86_64.AppImage) | Single executable for all Linux distributions |
-| **Linux** | Tarball `.tar.gz` | [**Download tar.gz**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-linux.tar.gz) | Raw bundle |
-| **Android** | Standalone `.apk` | [**Download APK**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-android-2.2.0.apk) | Direct install APK with SAF support |
-| **Android** | App Bundle `.aab` | [**Download AAB**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.2.0/mise-android-2.2.0.aab) | Google Play distribution package |
+| **Windows** | Setup `.exe` | [**Download Installer**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.3.0/mise-setup-2.3.0.exe) | Inno Setup installer with start menu & desktop shortcuts |
+| **Windows** | Portable `.zip` | [**Download ZIP**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.3.0/mise-windows.zip) | Portable release — extract and run anywhere |
+| **Linux** | Debian / Ubuntu `.deb` | [**Download .deb**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.3.0/mise_2.3.0_amd64.deb) | Desktop integration, icons, and binary symlink |
+| **Linux** | Standalone AppImage | [**Download AppImage**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.3.0/Mise-2.3.0-x86_64.AppImage) | Single executable for all Linux distributions |
+| **Linux** | Tarball `.tar.gz` | [**Download tar.gz**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.3.0/mise-linux.tar.gz) | Raw bundle |
+| **Android** | Standalone `.apk` | [**Download APK**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.3.0/mise-android-2.3.0.apk) | Direct install APK with SAF support |
+| **Android** | App Bundle `.aab` | [**Download AAB**](https://github.com/BezaleelPaul/file_organizer_flutter/releases/download/v2.3.0/mise-android-2.3.0.aab) | Google Play distribution package |
 
 *(Looking for older versions? Visit the [GitHub Releases page](https://github.com/BezaleelPaul/file_organizer_flutter/releases).)*
 
@@ -56,7 +58,7 @@ Download ready-to-run release binaries for your operating system:
 
 Named after the culinary standard ***mise en place*** (*"everything in its place before cooking starts"*), **Mise** solves the chaotic desktop problem without compromising control or privacy.
 
-> **"Most file organizers force you to choose between paying $42 for a single-platform utility, running risky terminal scripts with no undo, or handing file metadata to cloud servers. Mise is 100% offline, cross-platform, journaled, and mathematically collision-proof."**
+> **"Most file organizers force you to choose between paying $42 for a single-platform utility, running risky terminal scripts with no undo, or handing file metadata to cloud servers. Mise is local-first, cross-platform, journaled, and collision-safe."**
 
 ```
 ❌ Traditional Sorters:
@@ -83,10 +85,10 @@ Duplicate scanners often crash with Out-Of-Memory (OOM) errors on large media co
 3. **Stage 3 (Chunked Stream):** Streams full SHA-256 digests in 64KB bounded chunks. Consumes constant memory regardless of whether files are 5MB or 50GB.
 * **Reclaimable Storage Treemap:** Interactive disk visualization showing wasted storage across directories with a 1-click duplicate cleaner that moves redundant copies safely to the reversible Trash folder.
 
-### 🧠 3. Adaptive Local Intelligence (100% Offline)
-* **Magic Byte Content Inspection:** Identifies PDFs, PNGs, MP3s, WebPs, and ZIPs by their binary signatures (`%PDF-`, `\x89PNG`, `ID3`), correctly classifying files even with missing or wrong extensions.
-* **Self-Tuning User Feedback:** When you manually reclassify a file in the Plan Preview, Mise stores your preference locally and adapts its scoring model for future scans.
-* **Zero Cloud Dependence:** No external API keys, zero network traffic, no background telemetry. Your personal files and directory structures never leave your machine.
+### 🧠 3. Adaptive Local Intelligence (Offline)
+* **Magic Byte Content Inspection:** Identifies PDFs, PNGs, MP3s, WebPs, and ZIPs by their binary signatures (`%PDF-`, `\x89PNG`, `ID3`), correctly classifying files even with missing or wrong extensions. Desktop only — SAF does not expose file heads on Android.
+* **Self-Tuning User Feedback:** When you manually reclassify a file in the Plan Preview, Mise records the preference locally and applies it to later scans in the same session.
+* **Zero Cloud Dependence:** No external API keys, no background telemetry, and no file data ever leaves your machine. The only network request is a version check against GitHub Releases — see [what Mise does not do](#what-mise-deliberately-does-not-do).
 
 ### 🔍 4. Power Search & Smart Collections
 Filter thousands of files instantaneously using a rich query operator syntax:
@@ -128,6 +130,34 @@ flowchart TD
 3. **Preview:** Displays a clear blueprint of all planned changes. You can tweak categories or exclude files.
 4. **Execute:** Executes moves atomically with automatic collision resolution (`filename (1).ext`).
 5. **Undo:** Any operation can be partially or completely reverted at any time.
+
+---
+
+## ⏱️ Performance (Measured, Not Estimated)
+
+Run the benchmark yourself — it generates a throwaway fixture, then times the real scanner and duplicate engine:
+
+```bash
+# 5,250 files, 41 MB
+dart run scripts/bench.dart
+
+# 550 files, 550 MB
+dart run scripts/bench.dart --files 500 --size-kb 1024 --dup-groups 50
+
+# Machine-readable output for CI or a README table
+dart run scripts/bench.dart --json
+```
+
+Reference run — Windows 11, Intel Core i5-7300U (2C/4T), 8 GB RAM, Flutter 3.41.9:
+
+| Fixture | Scan (isolate) | Duplicate detection | RSS delta while hashing |
+|:---|:---:|:---:|:---:|
+| 5,250 files, 41 MB | 1.7 s (3,051 files/s) | 6.2 s | 28.4 MB |
+| 550 files, 550 MB | 0.3 s (1,897 files/s) | 5.9 s | **0.9 MB** |
+
+The second row is the claim that matters: **13x the bytes, ~30x less memory.** Hashing streams in bounded chunks, so memory scales with the *number of files*, not file size. The tiny-file run is dominated by per-file syscalls and antivirus scanning, not hashing.
+
+Numbers vary by disk, CPU, and antivirus. Run it on your machine before quoting it — and never publish a percentage nobody can reproduce.
 
 ---
 
@@ -190,20 +220,55 @@ Mise's built-in search bar supports granular compound expressions:
 
 ---
 
-## 📊 Comparison
+## 📊 Where Mise Fits (Honest Comparison)
 
-How Mise stands against existing solutions:
+**Mise is not a file manager — it is a rule-based organizer.** File managers help you browse and move files by hand. Mise decides where files should go from rules you define, shows you the plan first, and lets you undo any single file. Most "best file organizer" lists actually rank mobile file managers, so here is the corrected map.
 
-| Feature | **Mise** | **Hazel** | **File Juggler** | **DropIt** | **Python `organize`** |
+### The actual competition: desktop automation
+
+| Capability | **Mise** | **Hazel** | **File Juggler** | **DropIt** | **`organize` CLI** |
 |:---|:---:|:---:|:---:|:---:|:---:|
-| **Platforms** | **Windows, macOS, Linux, Android, iOS** | macOS only | Windows only | Windows only | Any (Terminal) |
-| **Pricing** | **Free & Open Source (MIT)** | $42 / license | $40 / license | Free | Free |
-| **User Interface** | **Modern Material 3 GUI + CLI + Tray** | System Prefs pane | Legacy Win32 | Floating desktop box | None (YAML file) |
-| **Undo Safety** | **Per-file Selective + Full Batch Undo** | Basic Trash | Basic Trash | Limited | Dry-run only |
-| **Duplicate Finder** | **Streamed 3-Stage SHA-256 + Treemap** | ❌ None | ❌ None | ❌ None | Basic |
-| **Offline Privacy** | **100% Local (Zero network calls)** | 100% Local | 100% Local | 100% Local | 100% Local |
-| **Memory Footprint**| **Bounded 64KB Stream (OOM-Safe)** | Moderate | Moderate | Moderate | Moderate |
-| **System Tray** | **Yes (Background Watch & Shortcuts)** | Menu Bar | Tray Icon | Floating Drop Area | ❌ No |
+| **Platforms** | **Windows, macOS, Linux, Android\*, CLI** | macOS only | Windows only | Windows only | Any (terminal) |
+| **Pricing** | **Free, MIT** | ~$42 / license | ~$40 / license | Free (closed source) | Free, MIT |
+| **Rule-based sorting** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Preview before moving** | ✅ Full plan | Partial | Partial | Partial | Dry-run only |
+| **Per-file undo** | ✅ | ❌ Trash only | ❌ Trash only | Limited | ❌ |
+| **Duplicate detection** | ✅ Streamed 3-stage | ❌ | ❌ | ❌ | Basic |
+| **GUI + CLI in one** | ✅ | GUI only | GUI only | GUI only | CLI only |
+| **Tray / background runs** | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Open source** | ✅ | ❌ | ❌ | ❌ | ✅ |
+
+\*Android is SAF-limited: organizing works, but duplicate hashing and magic-byte detection are unavailable there. Duplicate detection is desktop-only.
+
+### Different job: mobile file managers (not direct competitors)
+
+These are the apps most "best file organizer" lists rank. Mise does not try to replace them.
+
+| App | Play Store installs | Model | Documented weak spot |
+|:---|:---:|:---|:---|
+| **Files by Google** | 1B+ | Free / OEM default | Category-first, not rule-based filing; no SMB/SFTP/WebDAV |
+| **File Commander** | 100M+ | Freemium (~$30+/yr) | Full-screen ads, subscription traps |
+| **Cx File Explorer** | 10M+ | Free (ad-free) | Scoped Storage barriers; SMB dropouts on large transfers |
+| **Solid Explorer** | 10M+ | Paid license | License revalidation failures on multi-account devices |
+| **Total Commander** | 10M+ | Free (donation) | Dated UI; plugins installed as separate APKs |
+| **MiXplorer Silver** | 100K+ on Play | Paid (free build on XDA) | Steep learning curve; plugin/version drift |
+
+*Install counts and pricing from Play Store listings (2026). Weak spots summarized from 1–2★ reviews and Reddit/XDA threads; not independently audited.*
+
+**If you need dual-pane browsing, SMB/NAS, encryption vaults, archive browsing, or built-in media players, use one of those tools. Mise deliberately does none of that.**
+
+### What Mise deliberately does not do
+
+Being explicit is cheaper than a 1-star review:
+
+- ❌ No cloud, SMB, FTP, or WebDAV connectors.
+- ❌ No encryption vault or password-protected folders.
+- ❌ No archive browsing, media player, or format converter.
+- ❌ No OS shell extension yet — you launch Mise instead of right-clicking a folder.
+- ⚠️ **Organize scans the selected folder's files.** Nested subfolders are not traversed; deep scanning is used by Search and Storage on desktop only.
+- ⚠️ **Android is SAF-only.** Duplicate hashing, magic-byte detection, and deep search/storage analytics are desktop-only.
+- ⚠️ **One network request:** an update check against GitHub Releases. It sends no file names, paths, or contents. It is not opt-in yet.
+- ⚠️ **Release builds are not code-signed/notarized.** Your OS may warn on first launch.
 
 ---
 
@@ -299,7 +364,7 @@ When designing Mise — an open-source, local-first file organizer and disk inte
 🔹 Zero-Jank Traversal: Recursive directory walking is offloaded to background Dart Isolates, keeping the UI pinned at 60/120 FPS.
 🔹 Selective Rollback: Transactions are recorded in OS Application Support directories (%APPDATA%, ~/Library), allowing users to undo individual file movements rather than reverting an entire batch.
 
-The project is 100% offline, privacy-first, and features native builds across Windows, macOS, Linux, Android, and a headless CLI.
+The project is local-first, privacy-first, and features native builds across Windows, macOS, Linux, Android, and a headless CLI.
 
 Check out the code, architecture docs, and v2.2.0 release on GitHub:
 👉 https://github.com/BezaleelPaul/file_organizer_flutter
@@ -322,14 +387,14 @@ Meet Mise (/miːz/) — named after the culinary philosophy "mise en place" ("ev
 Most file organizers force you to choose between paying $40+ for single-platform tools, using risky scripts with no undo safety net, or uploading personal file metadata to the cloud.
 
 Mise is built different:
-✅ 100% Offline & Private (Zero cloud calls, zero telemetry)
+✅ Local-First & Private (No file data leaves your machine; the only request is a GitHub update check)
 ✅ Safety-Guaranteed (Interactive Plan Preview + per-file selective rollback)
 ✅ Cross-Platform Native (Windows, macOS, Linux, Android, and a headless CLI)
 ✅ High Performance (Streamed 3-stage duplicate finder + reclaimable space treemap)
 
-Completely open source under the MIT license with 94 automated tests.
+Completely open source under the MIT license with 108 automated tests.
 
-Check out the repository and grab the v2.2.0 installer:
+Check out the repository and grab the v2.3.0 installer:
 👉 https://github.com/BezaleelPaul/file_organizer_flutter
 
 If you find it useful, leave a ⭐️ on GitHub!

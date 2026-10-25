@@ -36,57 +36,102 @@ class SafStorageService implements StorageService {
 
   @override
   Future<List<FileEntry>> listDirectory(String directory) async {
-    final raw = await _channel.invokeListMethod<Object?>('list', {'uri': directory});
+    final raw = await _channel.invokeListMethod<Object?>('list', {
+      'uri': directory,
+    });
     final entries = <FileEntry>[];
     for (final item in raw ?? <Object?>[]) {
       final map = Map<String, dynamic>.from(item as Map);
       final isDir = map['isDir'] == true;
-      entries.add(FileEntry(
-        name: map['name'] as String,
-        size: (map['size'] as num?)?.toInt() ?? 0,
-        isDirectory: isDir,
-        modified: DateTime.fromMillisecondsSinceEpoch(
-            (map['modified'] as num?)?.toInt() ?? 0),
-      ));
+      entries.add(
+        FileEntry(
+          name: map['name'] as String,
+          size: (map['size'] as num?)?.toInt() ?? 0,
+          isDirectory: isDir,
+          modified: DateTime.fromMillisecondsSinceEpoch(
+            (map['modified'] as num?)?.toInt() ?? 0,
+          ),
+        ),
+      );
     }
     return entries;
   }
 
   @override
   Future<bool> directoryExists(String directory, String name) async {
-    final result = await _channel.invokeMethod<bool>(
-        'existsDir', {'uri': directory, 'name': name});
+    final result = await _channel.invokeMethod<bool>('existsDir', {
+      'uri': directory,
+      'name': name,
+    });
     return result ?? false;
   }
 
   @override
+  Future<bool> fileExists(String directory, String name) async {
+    final uri = await _channel.invokeMethod<String>('childUri', {
+      'uri': directory,
+      'name': name,
+    });
+    return uri != null;
+  }
+
+  @override
   Future<String> ensureDirectory(String directory, String name) async {
-    final result = await _channel.invokeMethod<String>(
-        'ensureDir', {'uri': directory, 'name': name});
+    final result = await _channel.invokeMethod<String>('ensureDir', {
+      'uri': directory,
+      'name': name,
+    });
     return result!;
   }
 
   @override
-  Future<void> moveFile(String srcDir, String srcName, String destDir, String destName) async {
-    final srcUri = await _channel.invokeMethod<String>('childUri', {'uri': srcDir, 'name': srcName});
+  Future<void> moveFile(
+    String srcDir,
+    String srcName,
+    String destDir,
+    String destName,
+  ) async {
+    final srcUri = await _channel.invokeMethod<String>('childUri', {
+      'uri': srcDir,
+      'name': srcName,
+    });
     if (srcUri == null) {
       throw StateError('Source file not found: $srcName');
     }
-    await _channel.invokeMethod<void>('move', {'srcUri': srcUri, 'destDir': destDir, 'destName': destName});
+    await _channel.invokeMethod<void>('move', {
+      'srcUri': srcUri,
+      'destDir': destDir,
+      'destName': destName,
+    });
   }
 
   @override
-  Future<void> copyFile(String srcDir, String srcName, String destDir, String destName) async {
-    final srcUri = await _channel.invokeMethod<String>('childUri', {'uri': srcDir, 'name': srcName});
+  Future<void> copyFile(
+    String srcDir,
+    String srcName,
+    String destDir,
+    String destName,
+  ) async {
+    final srcUri = await _channel.invokeMethod<String>('childUri', {
+      'uri': srcDir,
+      'name': srcName,
+    });
     if (srcUri == null) {
       throw StateError('Source file not found: $srcName');
     }
-    await _channel.invokeMethod<void>('copy', {'srcUri': srcUri, 'destDir': destDir, 'destName': destName});
+    await _channel.invokeMethod<void>('copy', {
+      'srcUri': srcUri,
+      'destDir': destDir,
+      'destName': destName,
+    });
   }
 
   @override
   Future<void> deleteFile(String directory, String name) async {
-    final srcUri = await _channel.invokeMethod<String>('childUri', {'uri': directory, 'name': name});
+    final srcUri = await _channel.invokeMethod<String>('childUri', {
+      'uri': directory,
+      'name': name,
+    });
     if (srcUri != null) {
       await _channel.invokeMethod<void>('delete', {'uri': srcUri});
     }
@@ -96,8 +141,11 @@ class SafStorageService implements StorageService {
   Future<String?> fileHash(String directory, String name) async => null;
 
   @override
-  Future<Uint8List?> readHead(String directory, String name, int length) async =>
-      null;
+  Future<Uint8List?> readHead(
+    String directory,
+    String name,
+    int length,
+  ) async => null;
 
   @override
   Future<bool> removeEmptyDirectory(String directory) async {

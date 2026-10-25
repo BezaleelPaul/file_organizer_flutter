@@ -112,8 +112,10 @@ Future<_Config> _loadConfig(String? path) async {
   }
   final categories = json['categories'];
   if (categories is Map) {
-    config.categories = categories.map((k, v) => MapEntry(
-        k.toString(), (v as List).map((e) => e.toString()).toList()));
+    config.categories = categories.map(
+      (k, v) =>
+          MapEntry(k.toString(), (v as List).map((e) => e.toString()).toList()),
+    );
   }
   final patternRules = json['pattern_rules'];
   if (patternRules is List) {
@@ -133,8 +135,7 @@ Future<_Config> _loadConfig(String? path) async {
   }
   config.renameTemplate =
       json['rename_template'] as String? ?? config.renameTemplate;
-  config.dateTemplate =
-      json['date_template'] as String? ?? config.dateTemplate;
+  config.dateTemplate = json['date_template'] as String? ?? config.dateTemplate;
   return config;
 }
 
@@ -142,10 +143,12 @@ Future<void> _plan(_Opts opts, _Config config, StorageService storage) async {
   final root = opts.positionals.single;
   final organizer = _organizerFor(root, opts, config, storage);
   final scan = await organizer.scan();
-  final actionable =
-      scan.files.where((f) => !f.skipped && !f.isDuplicate).toList();
-  final duplicates =
-      scan.files.where((f) => !f.skipped && f.isDuplicate).toList();
+  final actionable = scan.files
+      .where((f) => !f.skipped && !f.isDuplicate)
+      .toList();
+  final duplicates = scan.files
+      .where((f) => !f.skipped && f.isDuplicate)
+      .toList();
   if (opts.flag('json')) {
     _write(jsonEncode(_summaryJson(root, actionable, duplicates)));
     return;
@@ -154,13 +157,18 @@ Future<void> _plan(_Opts opts, _Config config, StorageService storage) async {
     _write('${file.name}  →  ${file.destination}');
   }
   _write(
-      '${actionable.length} file(s), ${formatBytes(scan.totalBytes)} — nothing was changed.');
+    '${actionable.length} file(s), ${formatBytes(scan.totalBytes)} — nothing was changed.',
+  );
   if (duplicates.isNotEmpty) {
     _write('${duplicates.length} duplicate(s) detected (would be skipped).');
   }
 }
 
-Future<void> _organize(_Opts opts, _Config config, StorageService storage) async {
+Future<void> _organize(
+  _Opts opts,
+  _Config config,
+  StorageService storage,
+) async {
   final root = opts.positionals.single;
   final organizer = _organizerFor(root, opts, config, storage);
   final scan = await organizer.scan();
@@ -186,20 +194,23 @@ Future<void> _organize(_Opts opts, _Config config, StorageService storage) async
     bytes += file.size;
   }
   if (opts.flag('json')) {
-    _write(jsonEncode({
-      'root': root,
-      'action': entry.action,
-      'moved': moves.length,
-      'bytes': bytes,
-      'by_category': byCategory,
-      'created_dirs': entry.createdDirs,
-    }));
+    _write(
+      jsonEncode({
+        'root': root,
+        'action': entry.action,
+        'moved': moves.length,
+        'bytes': bytes,
+        'by_category': byCategory,
+        'created_dirs': entry.createdDirs,
+      }),
+    );
     return;
   }
   _write(
-      'Organized ${moves.length} file(s) (${formatBytes(bytes)}) into '
-      '${byCategory.length} '
-      '${byCategory.length == 1 ? 'category' : 'categories'}.');
+    'Organized ${moves.length} file(s) (${formatBytes(bytes)}) into '
+    '${byCategory.length} '
+    '${byCategory.length == 1 ? 'category' : 'categories'}.',
+  );
 }
 
 Future<void> _stats(_Opts opts, _Config config, StorageService storage) async {
@@ -211,15 +222,19 @@ Future<void> _stats(_Opts opts, _Config config, StorageService storage) async {
       ? scan.files.where((f) => f.isDuplicate).length
       : 0;
   if (opts.flag('json')) {
-    final rows = stats.map((name, stat) =>
-        MapEntry(name, {'count': stat.count, 'bytes': stat.bytes}));
-    _write(jsonEncode({
-      'root': root,
-      'files': scan.files.where((f) => !f.skipped).length,
-      'bytes': scan.totalBytes,
-      'duplicates': duplicates,
-      'categories': rows,
-    }));
+    final rows = stats.map(
+      (name, stat) =>
+          MapEntry(name, {'count': stat.count, 'bytes': stat.bytes}),
+    );
+    _write(
+      jsonEncode({
+        'root': root,
+        'files': scan.files.where((f) => !f.skipped).length,
+        'bytes': scan.totalBytes,
+        'duplicates': duplicates,
+        'categories': rows,
+      }),
+    );
     return;
   }
   final names = stats.keys.toList()..sort();
@@ -229,16 +244,22 @@ Future<void> _stats(_Opts opts, _Config config, StorageService storage) async {
   for (final name in names) {
     final stat = stats[name]!;
     _write(
-        '${name.padRight(width)}  ${stat.count.toString().padLeft(4)}  ${formatBytes(stat.bytes)}');
+      '${name.padRight(width)}  ${stat.count.toString().padLeft(4)}  ${formatBytes(stat.bytes)}',
+    );
   }
   _write('---');
   _write(
-      '${scan.files.where((f) => !f.skipped).length} file(s), ${formatBytes(scan.totalBytes)}');
+    '${scan.files.where((f) => !f.skipped).length} file(s), ${formatBytes(scan.totalBytes)}',
+  );
   if (duplicates > 0) _write('$duplicates duplicate(s)');
 }
 
 Organizer _organizerFor(
-    String root, _Opts opts, _Config config, StorageService storage) {
+  String root,
+  _Opts opts,
+  _Config config,
+  StorageService storage,
+) {
   return Organizer(
     storage: storage,
     root: root,
@@ -257,7 +278,10 @@ Organizer _organizerFor(
 }
 
 Map<String, dynamic> _summaryJson(
-    String root, List<PlannedMove> moves, List<PlannedMove> duplicates) {
+  String root,
+  List<PlannedMove> moves,
+  List<PlannedMove> duplicates,
+) {
   final byCategory = <String, int>{};
   var bytes = 0;
   for (final file in moves) {
@@ -369,20 +393,24 @@ class CliStorage implements StorageService {
       if (name.startsWith('.')) continue;
       if (entity is File) {
         final stat = entity.statSync();
-        entries.add(FileEntry(
-          name: name,
-          size: stat.size,
-          isDirectory: false,
-          modified: stat.modified,
-        ));
+        entries.add(
+          FileEntry(
+            name: name,
+            size: stat.size,
+            isDirectory: false,
+            modified: stat.modified,
+          ),
+        );
       } else if (entity is Directory) {
         final stat = entity.statSync();
-        entries.add(FileEntry(
-          name: name,
-          size: 0,
-          isDirectory: true,
-          modified: stat.modified,
-        ));
+        entries.add(
+          FileEntry(
+            name: name,
+            size: 0,
+            isDirectory: true,
+            modified: stat.modified,
+          ),
+        );
       }
     }
     return entries;
@@ -393,6 +421,10 @@ class CliStorage implements StorageService {
       Directory(p.join(directory, name)).exists();
 
   @override
+  Future<bool> fileExists(String directory, String name) =>
+      File(p.join(directory, name)).exists();
+
+  @override
   Future<String> ensureDirectory(String directory, String name) async {
     final dir = Directory(p.join(directory, name));
     await dir.create(recursive: true);
@@ -401,19 +433,52 @@ class CliStorage implements StorageService {
 
   @override
   Future<void> moveFile(
-      String srcDir, String srcName, String destDir, String destName) {
-    return File(p.join(srcDir, srcName)).rename(p.join(destDir, destName));
+    String srcDir,
+    String srcName,
+    String destDir,
+    String destName,
+  ) async {
+    final src = File(p.join(srcDir, srcName));
+    final dest = File(p.join(destDir, destName));
+    if (!await dest.exists()) {
+      await src.rename(dest.path);
+    } else {
+      await src.rename(_freePath(destDir, destName));
+    }
   }
 
   @override
   Future<void> copyFile(
-      String srcDir, String srcName, String destDir, String destName) {
-    return File(p.join(srcDir, srcName)).copy(p.join(destDir, destName));
+    String srcDir,
+    String srcName,
+    String destDir,
+    String destName,
+  ) async {
+    final src = File(p.join(srcDir, srcName));
+    final dest = File(p.join(destDir, destName));
+    if (!await dest.exists()) {
+      await src.copy(dest.path);
+    } else {
+      await src.copy(_freePath(destDir, destName));
+    }
   }
 
   @override
-  Future<void> deleteFile(String directory, String name) =>
-      File(p.join(directory, name)).delete();
+  Future<void> deleteFile(String directory, String name) async {
+    final file = File(p.join(directory, name));
+    if (await file.exists()) await file.delete();
+  }
+
+  String _freePath(String directory, String name) {
+    final dot = name.lastIndexOf('.');
+    final stem = dot > 0 ? name.substring(0, dot) : name;
+    final suffix = dot > 0 ? name.substring(dot) : '';
+    var counter = 1;
+    while (File(p.join(directory, '$stem ($counter)$suffix')).existsSync()) {
+      counter += 1;
+    }
+    return p.join(directory, '$stem ($counter)$suffix');
+  }
 
   @override
   Future<String?> fileHash(String directory, String name) async {

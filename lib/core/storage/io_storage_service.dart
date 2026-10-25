@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:file_organizer/core/models.dart';
+import 'package:file_organizer/core/rules.dart';
 import 'package:file_organizer/core/storage/storage_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
@@ -54,12 +55,20 @@ class IoStorageService implements StorageService {
 
   @override
   Future<bool> directoryExists(String directory, String name) async {
+    _requireName(name);
     final dir = Directory(p.join(directory, name));
     return dir.existsSync();
   }
 
   @override
+  Future<bool> fileExists(String directory, String name) async {
+    _requireName(name);
+    return File(p.join(directory, name)).existsSync();
+  }
+
+  @override
   Future<String> ensureDirectory(String directory, String name) async {
+    _requireName(name);
     final dir = Directory(p.join(directory, name));
     if (!dir.existsSync()) dir.createSync(recursive: true);
     return dir.absolute.path;
@@ -67,6 +76,8 @@ class IoStorageService implements StorageService {
 
   @override
   Future<void> moveFile(String srcDir, String srcName, String destDir, String destName) async {
+    _requireName(srcName);
+    _requireName(destName);
     final src = File(p.join(srcDir, srcName));
     final dest = File(p.join(destDir, destName));
     if (!dest.existsSync()) {
@@ -80,6 +91,8 @@ class IoStorageService implements StorageService {
 
   @override
   Future<void> copyFile(String srcDir, String srcName, String destDir, String destName) async {
+    _requireName(srcName);
+    _requireName(destName);
     final src = File(p.join(srcDir, srcName));
     final dest = File(p.join(destDir, destName));
     if (!dest.existsSync()) {
@@ -94,12 +107,14 @@ class IoStorageService implements StorageService {
 
   @override
   Future<void> deleteFile(String directory, String name) async {
+    _requireName(name);
     final file = File(p.join(directory, name));
     if (file.existsSync()) file.deleteSync();
   }
 
   @override
   Future<String?> fileHash(String directory, String name) async {
+    _requireName(name);
     final file = File(p.join(directory, name));
     if (!await file.exists()) return null;
     try {
@@ -112,6 +127,7 @@ class IoStorageService implements StorageService {
 
   @override
   Future<Uint8List?> readHead(String directory, String name, int length) async {
+    _requireName(name);
     final file = File(p.join(directory, name));
     if (!file.existsSync()) return null;
     final raf = await file.open();
@@ -132,6 +148,16 @@ class IoStorageService implements StorageService {
       return true;
     }
     return false;
+  }
+
+  void _requireName(String name) {
+    if (!isSafeRelativeName(name)) {
+      throw ArgumentError.value(
+        name,
+        'name',
+        'File names must not contain path separators or "..".',
+      );
+    }
   }
 
   String _freePath(String directory, String name) {
